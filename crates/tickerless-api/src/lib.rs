@@ -2,14 +2,15 @@
 
 pub mod catalog;
 pub mod database;
+mod lens;
 mod link;
 mod models;
 
 use actix_web::{HttpResponse, Responder, web};
 use catalog::CompanyCatalog;
 use models::{
-    ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, LinkRequest,
-    SearchRequest,
+    ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, LensRequest,
+    LinkRequest, SearchRequest,
 };
 use sqlx::PgPool;
 
@@ -82,6 +83,20 @@ async fn resolve_link(state: web::Data<AppState>, body: web::Json<LinkRequest>) 
         )),
         Err(link::LinkError::FetchFailed) => HttpResponse::BadGateway()
             .json(ApiError::new("fetch_failed", "could not retrieve the URL")),
+    }
+}
+
+async fn resolve_lens(state: web::Data<AppState>, body: web::Json<LensRequest>) -> impl Responder {
+    match lens::resolve(&state.catalog, body.into_inner()) {
+        Ok(resolution) => HttpResponse::Ok().json(resolution),
+        Err(lens::LensError::EmptyInput) => HttpResponse::BadRequest().json(ApiError::new(
+            "empty_lens_input",
+            "OCR text or at least one recognition label is required",
+        )),
+        Err(lens::LensError::InputTooLarge) => HttpResponse::PayloadTooLarge().json(ApiError::new(
+            "lens_input_too_large",
+            "recognition input exceeds the supported limit",
+        )),
     }
 }
 
@@ -176,6 +191,7 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
             web::scope("/v1")
                 .route("/resolve/search", web::post().to(resolve_search))
                 .route("/resolve/link", web::post().to(resolve_link))
+                .route("/resolve/image", web::post().to(resolve_lens))
                 .route("/companies/{slug}", web::get().to(get_company))
                 .route("/discoveries", web::post().to(create_discovery))
                 .route("/discoveries", web::get().to(discovery_history)),
@@ -253,6 +269,25 @@ mod tests {
         assert_eq!(response.status(), 400);
         let body: serde_json::Value = test::read_body_json(response).await;
         assert_eq!(body["code"], "unsafe_url");
+    }
+
+    #[actix_web::test]
+    async fn lens_endpoint_resolves_product_text() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/resolve/image")
+            .set_json(serde_json::json!({"text": "GeForce RTX", "labels": ["GPU"]}))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(response.status(), 200);
+        let body: serde_json::Value = test::read_body_json(response).await;
+        assert_eq!(body["matches"][0]["company"]["slug"], "nvidia");
+        assert_eq!(body["matches"][0]["role"], "primary");
     }
 
     #[actix_web::test]

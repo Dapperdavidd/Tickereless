@@ -77,6 +77,17 @@ redirects, and rejects credentials, localhost, and non-public network targets.
 Title matches are ranked as the primary subject; deduplicated body matches are
 returned as mentions.
 
+Resolve OCR text and labels produced by the mobile Lens:
+
+```shell
+curl -X POST http://127.0.0.1:8080/v1/resolve/image \
+  -H 'content-type: application/json' \
+  -d '{"text":"GeForce RTX","labels":["GPU","graphics card"]}'
+```
+
+The API bounds and deduplicates recognition signals before resolving them through
+the same company registry used by Search and Link.
+
 Record the context that led to a company:
 
 ```shell

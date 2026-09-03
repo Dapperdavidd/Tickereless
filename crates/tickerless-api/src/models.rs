@@ -19,6 +19,13 @@ pub struct LinkRequest {
     pub url: String,
 }
 
+#[derive(Deserialize)]
+pub struct LensRequest {
+    pub text: Option<String>,
+    #[serde(default)]
+    pub labels: Vec<String>,
+}
+
 #[derive(Serialize)]
 pub struct SearchResponse<'a> {
     pub query: String,
@@ -40,6 +47,12 @@ pub struct SearchMatch<'a> {
 pub struct LinkResolution<'a> {
     pub url: String,
     pub title: Option<String>,
+    pub matches: Vec<SearchMatch<'a>>,
+}
+
+#[derive(Serialize)]
+pub struct LensResolution<'a> {
+    pub signals: Vec<String>,
     pub matches: Vec<SearchMatch<'a>>,
 }
 
