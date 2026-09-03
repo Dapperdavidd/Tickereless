@@ -88,6 +88,16 @@ curl -X POST http://127.0.0.1:8080/v1/resolve/image \
 The API bounds and deduplicates recognition signals before resolving them through
 the same company registry used by Search and Link.
 
+Request an exact-decimal ownership quote:
+
+```shell
+curl 'http://127.0.0.1:8080/v1/companies/nvidia/quote?amount_usdc=9'
+```
+
+Quotes expose the selected asset and estimated fractional token amount. An asset
+is only marked `actionable`/`executable` after both its token contract and market
+addresses have been registered; seeded symbols alone never imply deployability.
+
 Record the context that led to a company:
 
 ```shell

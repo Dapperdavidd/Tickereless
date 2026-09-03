@@ -19,6 +19,8 @@ struct CompanyRow {
     network: Option<String>,
     environment: Option<String>,
     contract_address: Option<String>,
+    market_address: Option<String>,
+    price_usdc: Option<rust_decimal::Decimal>,
 }
 
 pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
@@ -35,7 +37,8 @@ pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::migrate::MigrateError> {
 pub async fn load_catalog(pool: &PgPool) -> Result<CompanyCatalog, sqlx::Error> {
     let rows = sqlx::query_as::<_, CompanyRow>(
         "SELECT c.slug, c.name, c.ticker, c.description, a.symbol, a.network, \
-         a.environment, a.contract_address FROM companies c LEFT JOIN tokenized_assets a \
+         a.environment, a.contract_address, a.market_address, a.price_usdc \
+         FROM companies c LEFT JOIN tokenized_assets a \
          ON a.company_id = c.id AND a.active = true AND a.network = 'Base Sepolia' \
          AND a.environment = 'demo' ORDER BY c.name",
     )
@@ -65,6 +68,8 @@ pub async fn load_catalog(pool: &PgPool) -> Result<CompanyCatalog, sqlx::Error> 
                 network: row.network.expect("asset network is non-null"),
                 environment: row.environment.expect("asset environment is non-null"),
                 contract_address: row.contract_address,
+                market_address: row.market_address,
+                price_usdc: row.price_usdc.expect("asset price is non-null"),
             });
             Company {
                 aliases: aliases_by_slug.remove(&row.slug).unwrap_or_default(),

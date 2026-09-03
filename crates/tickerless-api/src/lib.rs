@@ -10,7 +10,7 @@ use actix_web::{HttpResponse, Responder, web};
 use catalog::CompanyCatalog;
 use models::{
     ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, LensRequest,
-    LinkRequest, SearchRequest,
+    LinkRequest, OwnershipQuote, OwnershipQuoteQuery, SearchRequest,
 };
 use sqlx::PgPool;
 
@@ -110,6 +110,44 @@ async fn get_company(state: web::Data<AppState>, slug: web::Path<String>) -> imp
     }
 }
 
+async fn ownership_quote(
+    state: web::Data<AppState>,
+    slug: web::Path<String>,
+    query: web::Query<OwnershipQuoteQuery>,
+) -> impl Responder {
+    let amount = query.amount_usdc;
+    if amount <= rust_decimal::Decimal::ZERO || amount > rust_decimal::Decimal::new(10_000, 0) {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_amount",
+            "amount_usdc must be greater than zero and no more than 10000",
+        ));
+    }
+    let Some(company) = state.catalog.find_by_slug(&slug) else {
+        return HttpResponse::NotFound().json(ApiError::new(
+            "company_not_found",
+            "company does not exist in the registry",
+        ));
+    };
+    let Some(asset) = company.asset.as_ref() else {
+        return HttpResponse::Conflict().json(ApiError::new(
+            "asset_unavailable",
+            "company does not have a supported tokenized asset",
+        ));
+    };
+    let quote = OwnershipQuote {
+        company_slug: &company.slug,
+        company_name: &company.name,
+        asset_symbol: &asset.symbol,
+        network: &asset.network,
+        amount_usdc: amount,
+        estimated_token_amount: (amount / asset.price_usdc).round_dp(18),
+        contract_address: asset.contract_address.as_deref(),
+        market_address: asset.market_address.as_deref(),
+        executable: asset.contract_address.is_some() && asset.market_address.is_some(),
+    };
+    HttpResponse::Ok().json(quote)
+}
+
 async fn create_discovery(
     state: web::Data<AppState>,
     body: web::Json<CreateDiscoveryRequest>,
@@ -193,6 +231,7 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
                 .route("/resolve/link", web::post().to(resolve_link))
                 .route("/resolve/image", web::post().to(resolve_lens))
                 .route("/companies/{slug}", web::get().to(get_company))
+                .route("/companies/{slug}/quote", web::get().to(ownership_quote))
                 .route("/discoveries", web::post().to(create_discovery))
                 .route("/discoveries", web::get().to(discovery_history)),
         );
@@ -288,6 +327,24 @@ mod tests {
         let body: serde_json::Value = test::read_body_json(response).await;
         assert_eq!(body["matches"][0]["company"]["slug"], "nvidia");
         assert_eq!(body["matches"][0]["role"], "primary");
+    }
+
+    #[actix_web::test]
+    async fn quote_uses_exact_decimal_pricing() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::get()
+            .uri("/v1/companies/nvidia/quote?amount_usdc=9")
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(response.status(), 200);
+        let body: serde_json::Value = test::read_body_json(response).await;
+        assert_eq!(body["estimated_token_amount"], "0.05");
+        assert_eq!(body["executable"], false);
     }
 
     #[actix_web::test]

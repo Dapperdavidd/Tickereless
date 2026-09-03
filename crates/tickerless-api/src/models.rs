@@ -1,4 +1,5 @@
 use chrono::{DateTime, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
@@ -73,6 +74,30 @@ pub struct TokenizedAsset {
     pub network: String,
     pub environment: String,
     pub contract_address: Option<String>,
+    pub market_address: Option<String>,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub price_usdc: Decimal,
+}
+
+#[derive(Deserialize)]
+pub struct OwnershipQuoteQuery {
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount_usdc: Decimal,
+}
+
+#[derive(Serialize)]
+pub struct OwnershipQuote<'a> {
+    pub company_slug: &'a str,
+    pub company_name: &'a str,
+    pub asset_symbol: &'a str,
+    pub network: &'a str,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount_usdc: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub estimated_token_amount: Decimal,
+    pub contract_address: Option<&'a str>,
+    pub market_address: Option<&'a str>,
+    pub executable: bool,
 }
 
 #[derive(Serialize)]
