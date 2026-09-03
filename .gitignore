@@ -1,0 +1,12 @@
+.DS_Store
+
+# Local project notes
+.workspace-notes/
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Editor-local state
+.zed/
