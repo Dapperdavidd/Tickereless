@@ -19,6 +19,13 @@ client and Base contracts will be introduced in later phases.
 Requirements:
 
 - Rust 1.95 or newer
+- Docker, for the local PostgreSQL service
+
+Start PostgreSQL:
+
+```shell
+docker compose up -d postgres
+```
 
 Start the development server:
 
