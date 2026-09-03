@@ -1,0 +1,18 @@
+[workspace]
+members = ["crates/tickerless-api"]
+resolver = "2"
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+rust-version = "1.95"
+
+[workspace.dependencies]
+actix-web = "4.15.0"
+serde = { version = "1.0.229", features = ["derive"] }
+tracing = "0.1.41"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[profile.release]
+lto = "thin"
+strip = "symbols"

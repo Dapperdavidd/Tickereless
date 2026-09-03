@@ -1,4 +1,5 @@
 .DS_Store
+/target/
 
 # Local project notes
 .workspace-notes/
