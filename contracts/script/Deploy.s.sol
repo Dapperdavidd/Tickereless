@@ -1,0 +1,47 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.30;
+
+import { DemoToken } from "../src/DemoToken.sol";
+import { TickerlessMarket } from "../src/TickerlessMarket.sol";
+
+interface VmScript {
+    function startBroadcast() external;
+    function stopBroadcast() external;
+}
+
+contract DeployTickerless {
+    VmScript private constant vm =
+        VmScript(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    struct Deployment {
+        DemoToken usdc;
+        DemoToken apple;
+        DemoToken nvidia;
+        DemoToken meta;
+        DemoToken alphabet;
+        TickerlessMarket market;
+    }
+
+    function run() external returns (Deployment memory deployment) {
+        vm.startBroadcast();
+
+        deployment.usdc = new DemoToken("Test USD Coin", "tUSDC", 6);
+        deployment.apple = new DemoToken("Demo Apple", "tAAPLc", 18);
+        deployment.nvidia = new DemoToken("Demo NVIDIA", "tNVDAc", 18);
+        deployment.meta = new DemoToken("Demo Meta", "tMETAc", 18);
+        deployment.alphabet = new DemoToken("Demo Alphabet", "tGOOGLc", 18);
+        deployment.market = new TickerlessMarket(address(deployment.usdc));
+
+        _list(deployment.apple, deployment.market, 200e6);
+        _list(deployment.nvidia, deployment.market, 180e6);
+        _list(deployment.meta, deployment.market, 500e6);
+        _list(deployment.alphabet, deployment.market, 150e6);
+
+        vm.stopBroadcast();
+    }
+
+    function _list(DemoToken token, TickerlessMarket market, uint256 price) private {
+        market.setAssetPrice(address(token), price);
+        token.mint(address(market), 1_000e18);
+    }
+}

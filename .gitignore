@@ -1,5 +1,8 @@
 .DS_Store
 /target/
+/contracts/cache/
+/contracts/out/
+/broadcast/
 
 # Local project notes
 .workspace-notes/

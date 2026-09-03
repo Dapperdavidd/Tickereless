@@ -115,3 +115,31 @@ cargo fmt --all --check
 cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 ```
+
+## Demo contracts
+
+The Foundry project contains:
+
+- `DemoToken`, an owner-minted ERC-20-compatible token used for test USDC and demo equities.
+- `TickerlessMarket`, a fixed-price market that exchanges six-decimal test USDC for fractional
+  18-decimal demo equities with a caller-provided minimum output.
+- A deployment script that creates tUSDC, tAAPLc, tNVDAc, tMETAc, and tGOOGLc, lists the four
+  equities, and supplies market inventory.
+
+These contracts represent demo assets only; they are not real securities. Run the contract gates
+with:
+
+```shell
+forge fmt --check
+forge build
+forge test
+forge lint
+```
+
+Deploy to a configured development RPC:
+
+```shell
+forge script contracts/script/Deploy.s.sol:DeployTickerless \
+  --rpc-url "$BASE_SEPOLIA_RPC_URL" \
+  --broadcast
+```
