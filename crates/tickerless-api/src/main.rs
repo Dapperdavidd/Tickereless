@@ -1,7 +1,7 @@
 use std::{env, io};
 
 use actix_web::{App, HttpServer};
-use tickerless_api::configure_app;
+use tickerless_api::{AppState, configure_app};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -25,7 +25,9 @@ async fn main() -> io::Result<()> {
 
     info!(%host, %port, "starting Tickerless API");
 
-    HttpServer::new(|| App::new().configure(configure_app))
+    let state = actix_web::web::Data::new(AppState::default());
+
+    HttpServer::new(move || App::new().app_data(state.clone()).configure(configure_app))
         .bind((host, port))?
         .run()
         .await

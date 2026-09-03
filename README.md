@@ -32,6 +32,17 @@ Check its health:
 curl http://127.0.0.1:8080/health
 ```
 
+Resolve a real-world query:
+
+```shell
+curl -X POST http://127.0.0.1:8080/v1/resolve/search \
+  -H 'content-type: application/json' \
+  -d '{"query":"who owns Instagram?"}'
+```
+
+The initial registry contains Apple, Meta Platforms, Alphabet, and NVIDIA. Only
+assets explicitly present in the registry are returned as actionable.
+
 Run the project checks:
 
 ```shell
