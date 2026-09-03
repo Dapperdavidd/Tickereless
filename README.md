@@ -64,6 +64,19 @@ curl -X POST http://127.0.0.1:8080/v1/resolve/search \
 The initial registry contains Apple, Meta Platforms, Alphabet, and NVIDIA. Only
 assets explicitly present in the registry are returned as actionable.
 
+Resolve companies mentioned by a public page:
+
+```shell
+curl -X POST http://127.0.0.1:8080/v1/resolve/link \
+  -H 'content-type: application/json' \
+  -d '{"url":"https://www.nvidia.com/en-us/"}'
+```
+
+Link fetching accepts HTTP(S) text pages up to one megabyte, does not follow
+redirects, and rejects credentials, localhost, and non-public network targets.
+Title matches are ranked as the primary subject; deduplicated body matches are
+returned as mentions.
+
 Record the context that led to a company:
 
 ```shell

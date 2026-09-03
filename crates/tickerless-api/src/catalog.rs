@@ -21,7 +21,7 @@ impl CompanyCatalog {
             .find(|company| company.slug.eq_ignore_ascii_case(slug))
     }
 
-    pub fn search<'a>(&'a self, query: &'a str) -> SearchResponse<'a> {
+    pub fn search<'a>(&'a self, query: &str) -> SearchResponse<'a> {
         let query_normalized = normalize(query);
         let mut matches: Vec<_> = self
             .companies
@@ -29,7 +29,10 @@ impl CompanyCatalog {
             .filter_map(|company| score(company, &query_normalized))
             .collect();
         matches.sort_by(|a, b| b.confidence.total_cmp(&a.confidence));
-        SearchResponse { query, matches }
+        SearchResponse {
+            query: query.to_owned(),
+            matches,
+        }
     }
 }
 
@@ -51,6 +54,12 @@ fn score<'a>(company: &'a Company, query: &str) -> Option<SearchMatch<'a>> {
         .collect();
     let (confidence, reason) = if direct {
         (1.0, format!("Direct match for {}.", company.name))
+    } else if phrase(query, &normalize(&company.name)) || phrase(query, &normalize(&company.ticker))
+    {
+        (
+            0.98,
+            format!("The content directly references {}.", company.name),
+        )
     } else if let Some(alias) = alias {
         (
             0.95,
@@ -70,6 +79,7 @@ fn score<'a>(company: &'a Company, query: &str) -> Option<SearchMatch<'a>> {
         reason,
         confidence,
         actionable: company.asset.is_some(),
+        role: None,
     })
 }
 

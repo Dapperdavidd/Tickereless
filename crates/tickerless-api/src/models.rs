@@ -14,9 +14,14 @@ pub struct SearchRequest {
     pub query: String,
 }
 
+#[derive(Deserialize)]
+pub struct LinkRequest {
+    pub url: String,
+}
+
 #[derive(Serialize)]
 pub struct SearchResponse<'a> {
-    pub query: &'a str,
+    pub query: String,
     pub matches: Vec<SearchMatch<'a>>,
 }
 
@@ -27,6 +32,15 @@ pub struct SearchMatch<'a> {
     pub reason: String,
     pub confidence: f32,
     pub actionable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<&'static str>,
+}
+
+#[derive(Serialize)]
+pub struct LinkResolution<'a> {
+    pub url: String,
+    pub title: Option<String>,
+    pub matches: Vec<SearchMatch<'a>>,
 }
 
 #[derive(Serialize)]

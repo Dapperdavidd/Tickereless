@@ -2,12 +2,14 @@
 
 pub mod catalog;
 pub mod database;
+mod link;
 mod models;
 
 use actix_web::{HttpResponse, Responder, web};
 use catalog::CompanyCatalog;
 use models::{
-    ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, SearchRequest,
+    ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, LinkRequest,
+    SearchRequest,
 };
 use sqlx::PgPool;
 
@@ -55,6 +57,32 @@ async fn resolve_search(
             .json(ApiError::new("invalid_query", "query must not be empty"));
     }
     HttpResponse::Ok().json(state.catalog.search(query))
+}
+
+async fn resolve_link(state: web::Data<AppState>, body: web::Json<LinkRequest>) -> impl Responder {
+    match link::resolve(&state.catalog, &body.url).await {
+        Ok(resolution) => HttpResponse::Ok().json(resolution),
+        Err(link::LinkError::InvalidUrl) => HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_url",
+            "a valid HTTP or HTTPS URL is required",
+        )),
+        Err(link::LinkError::UnsafeTarget) => HttpResponse::BadRequest().json(ApiError::new(
+            "unsafe_url",
+            "local and private-network URLs are not allowed",
+        )),
+        Err(link::LinkError::RedirectNotAllowed) => HttpResponse::UnprocessableEntity().json(
+            ApiError::new("redirect_not_allowed", "redirecting URLs are not supported"),
+        ),
+        Err(link::LinkError::UnsupportedContent) => HttpResponse::UnsupportedMediaType().json(
+            ApiError::new("unsupported_content", "URL must return HTML or plain text"),
+        ),
+        Err(link::LinkError::PageTooLarge) => HttpResponse::PayloadTooLarge().json(ApiError::new(
+            "page_too_large",
+            "page exceeds the one megabyte limit",
+        )),
+        Err(link::LinkError::FetchFailed) => HttpResponse::BadGateway()
+            .json(ApiError::new("fetch_failed", "could not retrieve the URL")),
+    }
 }
 
 async fn get_company(state: web::Data<AppState>, slug: web::Path<String>) -> impl Responder {
@@ -147,6 +175,7 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
         .service(
             web::scope("/v1")
                 .route("/resolve/search", web::post().to(resolve_search))
+                .route("/resolve/link", web::post().to(resolve_link))
                 .route("/companies/{slug}", web::get().to(get_company))
                 .route("/discoveries", web::post().to(create_discovery))
                 .route("/discoveries", web::get().to(discovery_history)),
@@ -206,6 +235,24 @@ mod tests {
             .set_json(serde_json::json!({"query": "  "}))
             .to_request();
         assert_eq!(test::call_service(&app, request).await.status(), 400);
+    }
+
+    #[actix_web::test]
+    async fn link_resolver_rejects_local_targets() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/resolve/link")
+            .set_json(serde_json::json!({"url": "http://localhost/private"}))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(response.status(), 400);
+        let body: serde_json::Value = test::read_body_json(response).await;
+        assert_eq!(body["code"], "unsafe_url");
     }
 
     #[actix_web::test]
