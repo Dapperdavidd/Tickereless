@@ -1,4 +1,7 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::FromRow;
+use uuid::Uuid;
 
 #[derive(Serialize)]
 pub struct HealthResponse {
@@ -54,4 +57,49 @@ impl ApiError {
     pub const fn new(code: &'static str, message: &'static str) -> Self {
         Self { code, message }
     }
+}
+
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DiscoveryMethod {
+    Search,
+    Lens,
+    Link,
+}
+
+impl DiscoveryMethod {
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Search => "search",
+            Self::Lens => "lens",
+            Self::Link => "link",
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct CreateDiscoveryRequest {
+    pub company_slug: String,
+    pub method: DiscoveryMethod,
+    pub source: String,
+    pub explanation: String,
+    pub wallet_address: Option<String>,
+}
+
+#[derive(Deserialize)]
+pub struct DiscoveryHistoryQuery {
+    pub wallet_address: String,
+    pub limit: Option<i64>,
+}
+
+#[derive(Serialize, FromRow)]
+pub struct Discovery {
+    pub id: Uuid,
+    pub company_slug: String,
+    pub company_name: String,
+    pub ticker: String,
+    pub method: String,
+    pub source: String,
+    pub explanation: String,
+    pub created_at: DateTime<Utc>,
 }

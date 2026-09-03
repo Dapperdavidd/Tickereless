@@ -64,6 +64,26 @@ curl -X POST http://127.0.0.1:8080/v1/resolve/search \
 The initial registry contains Apple, Meta Platforms, Alphabet, and NVIDIA. Only
 assets explicitly present in the registry are returned as actionable.
 
+Record the context that led to a company:
+
+```shell
+curl -X POST http://127.0.0.1:8080/v1/discoveries \
+  -H 'content-type: application/json' \
+  -d '{
+    "company_slug":"meta",
+    "method":"search",
+    "source":"company behind Instagram",
+    "explanation":"Instagram is associated with Meta Platforms.",
+    "wallet_address":"0x0000000000000000000000000000000000000001"
+  }'
+```
+
+Retrieve a wallet's discovery history:
+
+```shell
+curl 'http://127.0.0.1:8080/v1/discoveries?wallet_address=0x0000000000000000000000000000000000000001'
+```
+
 Run the project checks:
 
 ```shell

@@ -6,7 +6,9 @@ mod models;
 
 use actix_web::{HttpResponse, Responder, web};
 use catalog::CompanyCatalog;
-use models::{ApiError, HealthResponse, SearchRequest};
+use models::{
+    ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, SearchRequest,
+};
 use sqlx::PgPool;
 
 pub struct AppState {
@@ -65,6 +67,79 @@ async fn get_company(state: web::Data<AppState>, slug: web::Path<String>) -> imp
     }
 }
 
+async fn create_discovery(
+    state: web::Data<AppState>,
+    body: web::Json<CreateDiscoveryRequest>,
+) -> impl Responder {
+    let mut input = body.into_inner();
+    input.company_slug = input.company_slug.trim().to_ascii_lowercase();
+    input.source = input.source.trim().to_owned();
+    input.explanation = input.explanation.trim().to_owned();
+    input.wallet_address = input
+        .wallet_address
+        .map(|wallet| wallet.trim().to_ascii_lowercase());
+    if input.company_slug.is_empty() || input.source.is_empty() || input.explanation.is_empty() {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_discovery",
+            "company_slug, source, and explanation must not be empty",
+        ));
+    }
+    if input
+        .wallet_address
+        .as_deref()
+        .is_some_and(|wallet| !valid_wallet(wallet))
+    {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_wallet",
+            "wallet_address must be a 20-byte hexadecimal address",
+        ));
+    }
+    match database::create_discovery(&state.pool, &input).await {
+        Ok(discovery) => HttpResponse::Created().json(discovery),
+        Err(database::CreateDiscoveryError::CompanyNotFound) => {
+            HttpResponse::NotFound().json(ApiError::new(
+                "company_not_found",
+                "company does not exist in the registry",
+            ))
+        }
+        Err(database::CreateDiscoveryError::Database(error)) => {
+            tracing::error!(%error, "failed to create discovery");
+            HttpResponse::InternalServerError()
+                .json(ApiError::new("database_error", "could not save discovery"))
+        }
+    }
+}
+
+async fn discovery_history(
+    state: web::Data<AppState>,
+    query: web::Query<DiscoveryHistoryQuery>,
+) -> impl Responder {
+    let wallet = query.wallet_address.trim().to_ascii_lowercase();
+    if !valid_wallet(&wallet) {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_wallet",
+            "wallet_address must be a 20-byte hexadecimal address",
+        ));
+    }
+    let limit = query.limit.unwrap_or(50).clamp(1, 100);
+    match database::discovery_history(&state.pool, &wallet, limit).await {
+        Ok(discoveries) => HttpResponse::Ok().json(discoveries),
+        Err(error) => {
+            tracing::error!(%error, "failed to load discovery history");
+            HttpResponse::InternalServerError().json(ApiError::new(
+                "database_error",
+                "could not load discoveries",
+            ))
+        }
+    }
+}
+
+fn valid_wallet(value: &str) -> bool {
+    value.len() == 42
+        && value.starts_with("0x")
+        && value[2..].bytes().all(|byte| byte.is_ascii_hexdigit())
+}
+
 pub fn configure_app(config: &mut web::ServiceConfig) {
     config
         .route("/health", web::get().to(health))
@@ -72,7 +147,9 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
         .service(
             web::scope("/v1")
                 .route("/resolve/search", web::post().to(resolve_search))
-                .route("/companies/{slug}", web::get().to(get_company)),
+                .route("/companies/{slug}", web::get().to(get_company))
+                .route("/discoveries", web::post().to(create_discovery))
+                .route("/discoveries", web::get().to(discovery_history)),
         );
 }
 
@@ -129,5 +206,34 @@ mod tests {
             .set_json(serde_json::json!({"query": "  "}))
             .to_request();
         assert_eq!(test::call_service(&app, request).await.status(), 400);
+    }
+
+    #[actix_web::test]
+    async fn invalid_discovery_is_rejected_before_database_access() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/discoveries")
+            .set_json(serde_json::json!({
+                "company_slug": "meta", "method": "search", "source": "",
+                "explanation": "resolved from Instagram", "wallet_address": "0x1234"
+            }))
+            .to_request();
+        assert_eq!(test::call_service(&app, request).await.status(), 400);
+    }
+
+    #[actix_web::test]
+    async fn validates_ethereum_wallet_shape() {
+        assert!(super::valid_wallet(
+            "0x0000000000000000000000000000000000000001"
+        ));
+        assert!(!super::valid_wallet("0x1234"));
+        assert!(!super::valid_wallet(
+            "0xzz00000000000000000000000000000000000000"
+        ));
     }
 }
