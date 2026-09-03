@@ -28,21 +28,21 @@ pub struct SearchMatch<'a> {
 
 #[derive(Serialize)]
 pub struct Company {
-    pub slug: &'static str,
-    pub name: &'static str,
-    pub ticker: &'static str,
-    pub description: &'static str,
-    pub aliases: &'static [&'static str],
-    pub themes: &'static [&'static str],
+    pub slug: String,
+    pub name: String,
+    pub ticker: String,
+    pub description: String,
+    pub aliases: Vec<String>,
+    pub themes: Vec<String>,
     pub asset: Option<TokenizedAsset>,
 }
 
 #[derive(Serialize)]
 pub struct TokenizedAsset {
-    pub symbol: &'static str,
-    pub network: &'static str,
-    pub environment: &'static str,
-    pub contract_address: Option<&'static str>,
+    pub symbol: String,
+    pub network: String,
+    pub environment: String,
+    pub contract_address: Option<String>,
 }
 
 #[derive(Serialize)]

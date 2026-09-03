@@ -5,6 +5,10 @@ pub struct CompanyCatalog {
 }
 
 impl CompanyCatalog {
+    pub fn new(companies: Vec<Company>) -> Self {
+        Self { companies }
+    }
+
     pub fn seeded() -> Self {
         Self {
             companies: seed_companies(),
@@ -30,7 +34,7 @@ impl CompanyCatalog {
 }
 
 fn score<'a>(company: &'a Company, query: &str) -> Option<SearchMatch<'a>> {
-    let direct = query == normalize(company.name) || query == normalize(company.ticker);
+    let direct = query == normalize(&company.name) || query == normalize(&company.ticker);
     let alias = company
         .aliases
         .iter()
@@ -43,7 +47,7 @@ fn score<'a>(company: &'a Company, query: &str) -> Option<SearchMatch<'a>> {
                 .split_whitespace()
                 .all(|word| query.split_whitespace().any(|item| item == word))
         })
-        .copied()
+        .map(String::as_str)
         .collect();
     let (confidence, reason) = if direct {
         (1.0, format!("Direct match for {}.", company.name))
@@ -89,11 +93,11 @@ fn phrase(haystack: &str, needle: &str) -> bool {
     format!(" {haystack} ").contains(&format!(" {needle} "))
 }
 
-fn asset(symbol: &'static str) -> Option<TokenizedAsset> {
+fn asset(symbol: &str) -> Option<TokenizedAsset> {
     Some(TokenizedAsset {
-        symbol,
-        network: "Base Sepolia",
-        environment: "demo",
+        symbol: symbol.to_owned(),
+        network: "Base Sepolia".to_owned(),
+        environment: "demo".to_owned(),
         contract_address: None,
     })
 }
@@ -101,11 +105,12 @@ fn asset(symbol: &'static str) -> Option<TokenizedAsset> {
 fn seed_companies() -> Vec<Company> {
     vec![
         Company {
-            slug: "apple",
-            name: "Apple",
-            ticker: "AAPL",
-            description: "Consumer technology company behind iPhone, Mac, and other devices.",
-            aliases: &[
+            slug: "apple".to_owned(),
+            name: "Apple".to_owned(),
+            ticker: "AAPL".to_owned(),
+            description: "Consumer technology company behind iPhone, Mac, and other devices."
+                .to_owned(),
+            aliases: [
                 "iPhone",
                 "Mac",
                 "MacBook",
@@ -114,16 +119,23 @@ fn seed_companies() -> Vec<Company> {
                 "Apple Watch",
                 "Vision Pro",
                 "iPhone maker",
-            ],
-            themes: &["consumer technology", "smartphones", "personal computing"],
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+            themes: ["consumer technology", "smartphones", "personal computing"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
             asset: asset("tAAPLc"),
         },
         Company {
-            slug: "meta",
-            name: "Meta Platforms",
-            ticker: "META",
-            description: "Technology company behind Instagram, WhatsApp, Facebook, and Threads.",
-            aliases: &[
+            slug: "meta".to_owned(),
+            name: "Meta Platforms".to_owned(),
+            ticker: "META".to_owned(),
+            description: "Technology company behind Instagram, WhatsApp, Facebook, and Threads."
+                .to_owned(),
+            aliases: [
                 "Meta",
                 "Instagram",
                 "WhatsApp",
@@ -131,16 +143,23 @@ fn seed_companies() -> Vec<Company> {
                 "Threads",
                 "Quest",
                 "company behind Instagram",
-            ],
-            themes: &["social media", "virtual reality", "artificial intelligence"],
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+            themes: ["social media", "virtual reality", "artificial intelligence"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
             asset: asset("tMETAc"),
         },
         Company {
-            slug: "alphabet",
-            name: "Alphabet",
-            ticker: "GOOGL",
-            description: "Technology company behind Google, YouTube, Android, and Google Cloud.",
-            aliases: &[
+            slug: "alphabet".to_owned(),
+            name: "Alphabet".to_owned(),
+            ticker: "GOOGL".to_owned(),
+            description: "Technology company behind Google, YouTube, Android, and Google Cloud."
+                .to_owned(),
+            aliases: [
                 "Google",
                 "YouTube",
                 "Gemini",
@@ -149,21 +168,34 @@ fn seed_companies() -> Vec<Company> {
                 "Google Cloud",
                 "Waymo",
                 "company behind YouTube",
-            ],
-            themes: &[
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+            themes: [
                 "search engines",
                 "cloud computing",
                 "artificial intelligence",
-            ],
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
             asset: asset("tGOOGLc"),
         },
         Company {
-            slug: "nvidia",
-            name: "NVIDIA",
-            ticker: "NVDA",
-            description: "Computing company known for GPUs and accelerated AI infrastructure.",
-            aliases: &["GeForce", "RTX", "CUDA", "DGX", "GeForce GPUs"],
-            themes: &["ai chips", "gpu infrastructure", "artificial intelligence"],
+            slug: "nvidia".to_owned(),
+            name: "NVIDIA".to_owned(),
+            ticker: "NVDA".to_owned(),
+            description: "Computing company known for GPUs and accelerated AI infrastructure."
+                .to_owned(),
+            aliases: ["GeForce", "RTX", "CUDA", "DGX", "GeForce GPUs"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+            themes: ["ai chips", "gpu infrastructure", "artificial intelligence"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
             asset: asset("tNVDAc"),
         },
     ]

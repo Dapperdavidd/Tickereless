@@ -1,21 +1,22 @@
 #![forbid(unsafe_code)]
 
-mod catalog;
+pub mod catalog;
+pub mod database;
 mod models;
 
 use actix_web::{HttpResponse, Responder, web};
 use catalog::CompanyCatalog;
 use models::{ApiError, HealthResponse, SearchRequest};
+use sqlx::PgPool;
 
 pub struct AppState {
     catalog: CompanyCatalog,
+    pool: PgPool,
 }
 
-impl Default for AppState {
-    fn default() -> Self {
-        Self {
-            catalog: CompanyCatalog::seeded(),
-        }
+impl AppState {
+    pub fn new(catalog: CompanyCatalog, pool: PgPool) -> Self {
+        Self { catalog, pool }
     }
 }
 
@@ -24,6 +25,22 @@ async fn health() -> impl Responder {
         status: "ok",
         service: "tickerless-api",
     })
+}
+
+async fn readiness(state: web::Data<AppState>) -> impl Responder {
+    match sqlx::query_scalar::<_, i32>("SELECT 1")
+        .fetch_one(&state.pool)
+        .await
+    {
+        Ok(_) => HttpResponse::Ok().json(HealthResponse {
+            status: "ready",
+            service: "tickerless-api",
+        }),
+        Err(_) => HttpResponse::ServiceUnavailable().json(ApiError::new(
+            "database_unavailable",
+            "database is unavailable",
+        )),
+    }
 }
 
 async fn resolve_search(
@@ -49,17 +66,28 @@ async fn get_company(state: web::Data<AppState>, slug: web::Path<String>) -> imp
 }
 
 pub fn configure_app(config: &mut web::ServiceConfig) {
-    config.route("/health", web::get().to(health)).service(
-        web::scope("/v1")
-            .route("/resolve/search", web::post().to(resolve_search))
-            .route("/companies/{slug}", web::get().to(get_company)),
-    );
+    config
+        .route("/health", web::get().to(health))
+        .route("/ready", web::get().to(readiness))
+        .service(
+            web::scope("/v1")
+                .route("/resolve/search", web::post().to(resolve_search))
+                .route("/companies/{slug}", web::get().to(get_company)),
+        );
 }
 
 #[cfg(test)]
 mod tests {
     use super::{AppState, configure_app};
     use actix_web::{App, http::StatusCode, test, web};
+    use sqlx::postgres::PgPoolOptions;
+
+    fn test_state() -> AppState {
+        let pool = PgPoolOptions::new()
+            .connect_lazy("postgres://tickerless:tickerless@127.0.0.1/tickerless")
+            .expect("test database URL must be valid");
+        AppState::new(crate::catalog::CompanyCatalog::seeded(), pool)
+    }
 
     #[actix_web::test]
     async fn health_works() {
@@ -73,7 +101,7 @@ mod tests {
     async fn search_resolves_instagram() {
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(AppState::default()))
+                .app_data(web::Data::new(test_state()))
                 .configure(configure_app),
         )
         .await;
@@ -92,7 +120,7 @@ mod tests {
     async fn blank_search_is_rejected() {
         let app = test::init_service(
             App::new()
-                .app_data(web::Data::new(AppState::default()))
+                .app_data(web::Data::new(test_state()))
                 .configure(configure_app),
         )
         .await;

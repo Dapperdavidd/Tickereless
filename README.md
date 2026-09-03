@@ -27,6 +27,14 @@ Start PostgreSQL:
 docker compose up -d postgres
 ```
 
+Create the local environment file and start the API. Database migrations and
+registry seed data are applied automatically during startup:
+
+```shell
+cp .env.example .env
+cargo run -p tickerless-api
+```
+
 Start the development server:
 
 ```shell
@@ -37,6 +45,12 @@ Check its health:
 
 ```shell
 curl http://127.0.0.1:8080/health
+```
+
+Readiness includes a live database check:
+
+```shell
+curl http://127.0.0.1:8080/ready
 ```
 
 Resolve a real-world query:
