@@ -7,7 +7,7 @@ use crate::{
     chain::VerifiedPurchase,
     models::{
         Company, CreateDiscoveryRequest, Discovery, SubmitTransactionRequest, TokenizedAsset,
-        TransactionRecord,
+        TransactionRecord, WorldDiscoveryContext, WorldPosition, WorldSummary,
     },
 };
 
@@ -313,5 +313,67 @@ pub async fn record_transaction(
         network: company.5,
         created_at: inserted.1,
         confirmed_at: Some(inserted.2),
+    })
+}
+
+#[derive(FromRow)]
+struct WorldPositionRow {
+    company_slug: String,
+    company_name: String,
+    ticker: String,
+    asset_symbol: String,
+    invested_usdc: rust_decimal::Decimal,
+    token_amount: rust_decimal::Decimal,
+}
+
+pub async fn world(pool: &PgPool, wallet_address: &str) -> Result<WorldSummary, sqlx::Error> {
+    let rows = sqlx::query_as::<_, WorldPositionRow>(
+        "SELECT c.slug AS company_slug, c.name AS company_name, c.ticker, \
+         a.symbol AS asset_symbol, SUM(t.amount_usdc)::NUMERIC AS invested_usdc, \
+         SUM(t.token_amount)::NUMERIC AS token_amount FROM transactions t \
+         JOIN users u ON u.id = t.user_id JOIN companies c ON c.id = t.company_id \
+         JOIN tokenized_assets a ON a.id = t.asset_id \
+         WHERE u.wallet_address = $1 AND t.status = 'confirmed' \
+         GROUP BY c.slug, c.name, c.ticker, a.symbol ORDER BY SUM(t.amount_usdc) DESC",
+    )
+    .bind(wallet_address.to_ascii_lowercase())
+    .fetch_all(pool)
+    .await?;
+    let contexts = sqlx::query_as::<_, (String, String, String)>(
+        "SELECT c.slug, d.method, d.source FROM discoveries d \
+         JOIN users u ON u.id = d.user_id JOIN companies c ON c.id = d.company_id \
+         WHERE u.wallet_address = $1 ORDER BY d.created_at DESC",
+    )
+    .bind(wallet_address.to_ascii_lowercase())
+    .fetch_all(pool)
+    .await?;
+    let discovery_count = contexts.len();
+    let mut contexts_by_company: HashMap<String, Vec<WorldDiscoveryContext>> = HashMap::new();
+    for (slug, method, source) in contexts {
+        contexts_by_company
+            .entry(slug)
+            .or_default()
+            .push(WorldDiscoveryContext { method, source });
+    }
+    let companies: Vec<_> = rows
+        .into_iter()
+        .map(|row| WorldPosition {
+            discoveries: contexts_by_company
+                .remove(&row.company_slug)
+                .unwrap_or_default(),
+            company_slug: row.company_slug,
+            company_name: row.company_name,
+            ticker: row.ticker,
+            asset_symbol: row.asset_symbol,
+            invested_usdc: row.invested_usdc,
+            token_amount: row.token_amount,
+        })
+        .collect();
+    let total_owned_usdc = companies.iter().map(|company| company.invested_usdc).sum();
+    Ok(WorldSummary {
+        total_owned_usdc,
+        company_count: companies.len(),
+        discovery_count,
+        companies,
     })
 }

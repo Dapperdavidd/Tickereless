@@ -187,3 +187,36 @@ pub struct TransactionRecord {
     pub created_at: DateTime<Utc>,
     pub confirmed_at: Option<DateTime<Utc>>,
 }
+
+#[derive(Deserialize)]
+pub struct WorldQuery {
+    pub wallet_address: String,
+}
+
+#[derive(Serialize)]
+pub struct WorldSummary {
+    #[serde(with = "rust_decimal::serde::str")]
+    pub total_owned_usdc: Decimal,
+    pub company_count: usize,
+    pub discovery_count: usize,
+    pub companies: Vec<WorldPosition>,
+}
+
+#[derive(Serialize)]
+pub struct WorldPosition {
+    pub company_slug: String,
+    pub company_name: String,
+    pub ticker: String,
+    pub asset_symbol: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub invested_usdc: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub token_amount: Decimal,
+    pub discoveries: Vec<WorldDiscoveryContext>,
+}
+
+#[derive(Serialize)]
+pub struct WorldDiscoveryContext {
+    pub method: String,
+    pub source: String,
+}

@@ -115,6 +115,16 @@ chain ID, sender, market, asset, receipt status, `buy` calldata, and `Purchased`
 event, then derives the USDC and token amounts from the confirmed transaction.
 Transaction hashes are recorded once only.
 
+Retrieve the wallet's personalized “Your World” view:
+
+```shell
+curl 'http://127.0.0.1:8080/v1/world?wallet_address=0x0000000000000000000000000000000000000001'
+```
+
+Only confirmed purchases contribute to ownership totals. Multiple purchases are
+aggregated per company, while every associated search, Lens, and Link discovery
+remains visible as the path from attention to ownership.
+
 Record the context that led to a company:
 
 ```shell

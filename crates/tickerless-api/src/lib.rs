@@ -12,6 +12,7 @@ use catalog::CompanyCatalog;
 use models::{
     ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, LensRequest,
     LinkRequest, OwnershipQuote, OwnershipQuoteQuery, SearchRequest, SubmitTransactionRequest,
+    WorldQuery,
 };
 use sqlx::PgPool;
 
@@ -330,6 +331,24 @@ async fn submit_transaction(
     }
 }
 
+async fn get_world(state: web::Data<AppState>, query: web::Query<WorldQuery>) -> impl Responder {
+    let wallet = query.wallet_address.trim().to_ascii_lowercase();
+    if !valid_wallet(&wallet) {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_wallet",
+            "wallet_address must be a 20-byte hexadecimal address",
+        ));
+    }
+    match database::world(&state.pool, &wallet).await {
+        Ok(world) => HttpResponse::Ok().json(world),
+        Err(error) => {
+            tracing::error!(%error, "failed to load world");
+            HttpResponse::InternalServerError()
+                .json(ApiError::new("database_error", "could not load world"))
+        }
+    }
+}
+
 fn valid_wallet(value: &str) -> bool {
     value.len() == 42
         && value.starts_with("0x")
@@ -349,7 +368,8 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
                 .route("/companies/{slug}/quote", web::get().to(ownership_quote))
                 .route("/discoveries", web::post().to(create_discovery))
                 .route("/discoveries", web::get().to(discovery_history))
-                .route("/transactions", web::post().to(submit_transaction)),
+                .route("/transactions", web::post().to(submit_transaction))
+                .route("/world", web::get().to(get_world)),
         );
 }
 
@@ -465,6 +485,20 @@ mod tests {
         let body: serde_json::Value = test::read_body_json(response).await;
         assert_eq!(body["estimated_token_amount"], "0.05");
         assert_eq!(body["executable"], false);
+    }
+
+    #[actix_web::test]
+    async fn world_rejects_invalid_wallet() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::get()
+            .uri("/v1/world?wallet_address=0x1234")
+            .to_request();
+        assert_eq!(test::call_service(&app, request).await.status(), 400);
     }
 
     #[actix_web::test]
