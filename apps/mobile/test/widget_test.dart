@@ -29,4 +29,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Your World'), findsOneWidget);
   });
+
+  testWidgets('search journey reaches a Base Sepolia ownership confirmation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const TickerlessApp());
+    await tester.tap(find.text('Continue as guest'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Search'));
+    await tester.pumpAndSettle();
+    expect(find.text('Meta Platforms'), findsOneWidget);
+
+    await tester.tap(find.text('View Company →'));
+    await tester.pumpAndSettle();
+    expect(find.text('Company Passport'), findsOneWidget);
+
+    final ownButton = find.text('Own Meta Platforms');
+    await tester.ensureVisible(ownButton);
+    await tester.tap(ownButton);
+    await tester.pumpAndSettle();
+    expect(find.text('Base Sepolia'), findsOneWidget);
+
+    final reviewButton = find.text('Review Purchase');
+    await tester.ensureVisible(reviewButton);
+    await tester.tap(reviewButton);
+    await tester.pumpAndSettle();
+    expect(find.text('You now own\nMeta Platforms.'), findsOneWidget);
+    expect(find.text('on Base Sepolia'), findsOneWidget);
+  });
 }

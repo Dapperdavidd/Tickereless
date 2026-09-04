@@ -22,6 +22,11 @@ The Flutter client targets iOS and Android. Its current onboarding buttons all
 enter the demo while authentication is intentionally deferred. Every ownership
 surface is labeled as Base Sepolia and uses demo assets.
 
+The frontend includes navigable Search, Lens, Link, Company Passport, purchase,
+confirmation, Your World, Discovery History, and Profile experiences. The
+screens currently use deterministic demo content while backend and wallet
+integration are added in later slices.
+
 ```shell
 cd apps/mobile
 flutter pub get

@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tickerless_wordmark.dart';
+import 'experience_screens.dart';
+import 'main_tabs.dart';
 
 class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
@@ -16,15 +18,9 @@ class _HomeShellState extends State<HomeShell> {
 
   static const _pages = [
     _DiscoverHome(),
-    _PlaceholderPage(
-      title: 'Your World',
-      subtitle: r'$27.00 across 3 companies',
-    ),
-    _PlaceholderPage(
-      title: 'Discovery History',
-      subtitle: 'The path from attention to ownership.',
-    ),
-    _PlaceholderPage(title: 'You', subtitle: 'Explorer · 0x3f...7a9d'),
+    WorldScreen(),
+    ActivityScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -88,26 +84,39 @@ class _DiscoverHome extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 26),
-        const TextField(
+        TextField(
           readOnly: true,
-          decoration: InputDecoration(
+          onTap: () => openScreen(context, const SearchScreen()),
+          decoration: const InputDecoration(
             prefixIcon: Icon(Icons.search),
             hintText: 'Search anything...',
           ),
         ),
         const SizedBox(height: 16),
         Row(
-          children: const [
+          children: [
             Expanded(
-              child: _EntryTile(icon: Icons.center_focus_strong, label: 'Lens'),
+              child: _EntryTile(
+                icon: Icons.center_focus_strong,
+                label: 'Lens',
+                onTap: () => openScreen(context, const LensScreen()),
+              ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
-              child: _EntryTile(icon: Icons.link, label: 'Link'),
+              child: _EntryTile(
+                icon: Icons.link,
+                label: 'Link',
+                onTap: () => openScreen(context, const LinkScreen()),
+              ),
             ),
-            SizedBox(width: 12),
+            const SizedBox(width: 12),
             Expanded(
-              child: _EntryTile(icon: Icons.search, label: 'Search'),
+              child: _EntryTile(
+                icon: Icons.search,
+                label: 'Search',
+                onTap: () => openScreen(context, const SearchScreen()),
+              ),
             ),
           ],
         ),
@@ -186,12 +195,18 @@ class _DiscoverHome extends StatelessWidget {
 }
 
 class _EntryTile extends StatelessWidget {
-  const _EntryTile({required this.icon, required this.label});
+  const _EntryTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => GlassCard(
+    onTap: onTap,
     padding: const EdgeInsets.symmetric(vertical: 20),
     child: Column(
       children: [
@@ -232,35 +247,6 @@ class _MiniPosition extends StatelessWidget {
         Text(symbol, style: const TextStyle(fontSize: 11)),
         Text(amount, style: const TextStyle(fontWeight: FontWeight.w700)),
       ],
-    ),
-  );
-}
-
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({required this.title, required this.subtitle});
-  final String title;
-  final String subtitle;
-
-  @override
-  Widget build(BuildContext context) => SafeArea(
-    child: Padding(
-      padding: const EdgeInsets.all(22),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 30),
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 36,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -1.2,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(subtitle, style: const TextStyle(color: AppColors.muted)),
-        ],
-      ),
     ),
   );
 }
