@@ -3,6 +3,8 @@
 Tickerless turns real-world context into a path for discovering and interacting
 with tokenized equities on Base.
 
+[![CI](https://github.com/Dapperdavidd/Tickereless/actions/workflows/ci.yml/badge.svg)](https://github.com/Dapperdavidd/Tickereless/actions/workflows/ci.yml)
+
 ## Architecture
 
 The product resolves three kinds of input through one company-resolution engine:
