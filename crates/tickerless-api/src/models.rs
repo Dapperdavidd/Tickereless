@@ -161,3 +161,29 @@ pub struct Discovery {
     pub explanation: String,
     pub created_at: DateTime<Utc>,
 }
+
+#[derive(Deserialize)]
+pub struct SubmitTransactionRequest {
+    pub wallet_address: String,
+    pub company_slug: String,
+    pub discovery_id: Option<Uuid>,
+    pub tx_hash: String,
+}
+
+#[derive(Serialize, FromRow)]
+pub struct TransactionRecord {
+    pub id: Uuid,
+    pub company_slug: String,
+    pub company_name: String,
+    pub ticker: String,
+    pub asset_symbol: String,
+    pub tx_hash: String,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub amount_usdc: Decimal,
+    #[serde(with = "rust_decimal::serde::str")]
+    pub token_amount: Decimal,
+    pub status: String,
+    pub network: String,
+    pub created_at: DateTime<Utc>,
+    pub confirmed_at: Option<DateTime<Utc>>,
+}

@@ -4,7 +4,11 @@ use sqlx::{FromRow, PgPool, postgres::PgPoolOptions};
 
 use crate::{
     catalog::CompanyCatalog,
-    models::{Company, CreateDiscoveryRequest, Discovery, TokenizedAsset},
+    chain::VerifiedPurchase,
+    models::{
+        Company, CreateDiscoveryRequest, Discovery, SubmitTransactionRequest, TokenizedAsset,
+        TransactionRecord,
+    },
 };
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../../migrations");
@@ -205,4 +209,109 @@ pub async fn register_deployment(
         }
     }
     transaction.commit().await
+}
+
+pub enum RecordTransactionError {
+    DiscoveryMismatch,
+    Duplicate,
+    Database(sqlx::Error),
+}
+
+pub async fn record_transaction(
+    pool: &PgPool,
+    input: &SubmitTransactionRequest,
+    purchase: &VerifiedPurchase,
+) -> Result<TransactionRecord, RecordTransactionError> {
+    let mut transaction = pool
+        .begin()
+        .await
+        .map_err(RecordTransactionError::Database)?;
+    let company = sqlx::query_as::<_, (uuid::Uuid, String, String, uuid::Uuid, String, String)>(
+        "SELECT c.id, c.name, c.ticker, a.id, a.symbol, a.network FROM companies c \
+         JOIN tokenized_assets a ON a.company_id = c.id AND a.active = true \
+         WHERE c.slug = $1 AND a.network = 'Base Sepolia' AND a.environment = 'demo'",
+    )
+    .bind(&input.company_slug)
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(RecordTransactionError::Database)?;
+    let user_id = sqlx::query_scalar::<_, uuid::Uuid>(
+        "INSERT INTO users (wallet_address) VALUES ($1) \
+         ON CONFLICT (wallet_address) DO UPDATE SET wallet_address = EXCLUDED.wallet_address \
+         RETURNING id",
+    )
+    .bind(&input.wallet_address)
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(RecordTransactionError::Database)?;
+
+    if let Some(discovery_id) = input.discovery_id {
+        let linked = sqlx::query(
+            "UPDATE discoveries SET user_id = $1 WHERE id = $2 AND company_id = $3 \
+             AND (user_id IS NULL OR user_id = $1)",
+        )
+        .bind(user_id)
+        .bind(discovery_id)
+        .bind(company.0)
+        .execute(&mut *transaction)
+        .await
+        .map_err(RecordTransactionError::Database)?;
+        if linked.rows_affected() != 1 {
+            return Err(RecordTransactionError::DiscoveryMismatch);
+        }
+    }
+
+    let inserted = sqlx::query_as::<
+        _,
+        (
+            uuid::Uuid,
+            chrono::DateTime<chrono::Utc>,
+            chrono::DateTime<chrono::Utc>,
+        ),
+    >(
+        "INSERT INTO transactions (user_id, company_id, discovery_id, asset_id, tx_hash, \
+         amount_usdc, token_amount, status, network, confirmed_at) \
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'confirmed', $8, now()) \
+         RETURNING id, created_at, confirmed_at",
+    )
+    .bind(user_id)
+    .bind(company.0)
+    .bind(input.discovery_id)
+    .bind(company.3)
+    .bind(&input.tx_hash)
+    .bind(purchase.amount_usdc)
+    .bind(purchase.token_amount)
+    .bind(&company.5)
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(|error| {
+        if error
+            .as_database_error()
+            .and_then(|value| value.constraint())
+            == Some("transactions_tx_hash_key")
+        {
+            RecordTransactionError::Duplicate
+        } else {
+            RecordTransactionError::Database(error)
+        }
+    })?;
+    transaction
+        .commit()
+        .await
+        .map_err(RecordTransactionError::Database)?;
+
+    Ok(TransactionRecord {
+        id: inserted.0,
+        company_slug: input.company_slug.clone(),
+        company_name: company.1,
+        ticker: company.2,
+        asset_symbol: company.4,
+        tx_hash: input.tx_hash.clone(),
+        amount_usdc: purchase.amount_usdc,
+        token_amount: purchase.token_amount,
+        status: "confirmed".to_owned(),
+        network: company.5,
+        created_at: inserted.1,
+        confirmed_at: Some(inserted.2),
+    })
 }

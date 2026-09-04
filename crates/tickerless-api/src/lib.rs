@@ -1,6 +1,7 @@
 #![forbid(unsafe_code)]
 
 pub mod catalog;
+pub mod chain;
 pub mod database;
 mod lens;
 mod link;
@@ -10,18 +11,23 @@ use actix_web::{HttpResponse, Responder, web};
 use catalog::CompanyCatalog;
 use models::{
     ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, LensRequest,
-    LinkRequest, OwnershipQuote, OwnershipQuoteQuery, SearchRequest,
+    LinkRequest, OwnershipQuote, OwnershipQuoteQuery, SearchRequest, SubmitTransactionRequest,
 };
 use sqlx::PgPool;
 
 pub struct AppState {
     catalog: CompanyCatalog,
     pool: PgPool,
+    chain: chain::ChainClient,
 }
 
 impl AppState {
-    pub fn new(catalog: CompanyCatalog, pool: PgPool) -> Self {
-        Self { catalog, pool }
+    pub fn new(catalog: CompanyCatalog, pool: PgPool, chain: chain::ChainClient) -> Self {
+        Self {
+            catalog,
+            pool,
+            chain,
+        }
     }
 }
 
@@ -221,6 +227,109 @@ async fn discovery_history(
     }
 }
 
+async fn submit_transaction(
+    state: web::Data<AppState>,
+    body: web::Json<SubmitTransactionRequest>,
+) -> impl Responder {
+    let mut input = body.into_inner();
+    input.wallet_address = input.wallet_address.trim().to_ascii_lowercase();
+    input.company_slug = input.company_slug.trim().to_ascii_lowercase();
+    input.tx_hash = input.tx_hash.trim().to_ascii_lowercase();
+    if !valid_wallet(&input.wallet_address) {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_wallet",
+            "wallet_address must be a 20-byte hexadecimal address",
+        ));
+    }
+    let Some(company) = state.catalog.find_by_slug(&input.company_slug) else {
+        return HttpResponse::NotFound().json(ApiError::new(
+            "company_not_found",
+            "company does not exist in the registry",
+        ));
+    };
+    let Some(asset) = company.asset.as_ref() else {
+        return HttpResponse::Conflict().json(ApiError::new(
+            "asset_unavailable",
+            "company does not have a supported tokenized asset",
+        ));
+    };
+    let (Some(market), Some(contract), Some(chain_id)) = (
+        asset.market_address.as_deref(),
+        asset.contract_address.as_deref(),
+        asset.chain_id,
+    ) else {
+        return HttpResponse::Conflict().json(ApiError::new(
+            "asset_not_deployed",
+            "asset deployment is not registered",
+        ));
+    };
+    let purchase = match state
+        .chain
+        .verify_purchase(
+            &input.tx_hash,
+            &input.wallet_address,
+            market,
+            contract,
+            chain_id,
+        )
+        .await
+    {
+        Ok(purchase) => purchase,
+        Err(chain::VerifyError::InvalidTransactionHash) => {
+            return HttpResponse::BadRequest().json(ApiError::new(
+                "invalid_transaction_hash",
+                "tx_hash must be a 32-byte hexadecimal hash",
+            ));
+        }
+        Err(chain::VerifyError::Pending) => {
+            return HttpResponse::Accepted().json(ApiError::new(
+                "transaction_pending",
+                "transaction is not confirmed yet",
+            ));
+        }
+        Err(chain::VerifyError::Reverted) => {
+            return HttpResponse::UnprocessableEntity().json(ApiError::new(
+                "transaction_reverted",
+                "transaction reverted onchain",
+            ));
+        }
+        Err(chain::VerifyError::Mismatch) => {
+            return HttpResponse::UnprocessableEntity().json(ApiError::new(
+                "transaction_mismatch",
+                "transaction does not match this ownership action",
+            ));
+        }
+        Err(chain::VerifyError::Rpc) => {
+            return HttpResponse::BadGateway().json(ApiError::new(
+                "rpc_error",
+                "could not verify the transaction",
+            ));
+        }
+    };
+    match database::record_transaction(&state.pool, &input, &purchase).await {
+        Ok(transaction) => HttpResponse::Created().json(transaction),
+        Err(database::RecordTransactionError::DiscoveryMismatch) => {
+            HttpResponse::Conflict().json(ApiError::new(
+                "discovery_mismatch",
+                "discovery does not belong to this wallet and company",
+            ))
+        }
+        Err(database::RecordTransactionError::Duplicate) => {
+            HttpResponse::Conflict().json(ApiError::new(
+                "transaction_exists",
+                "transaction has already been recorded",
+            ))
+        }
+        Err(database::RecordTransactionError::Database(error)) => {
+            tracing::error!(%error, "failed to record transaction");
+            HttpResponse::InternalServerError().json(ApiError::new(
+                "database_error",
+                "could not record transaction",
+            ))
+        }
+    }
+}
+
 fn valid_wallet(value: &str) -> bool {
     value.len() == 42
         && value.starts_with("0x")
@@ -239,7 +348,8 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
                 .route("/companies/{slug}", web::get().to(get_company))
                 .route("/companies/{slug}/quote", web::get().to(ownership_quote))
                 .route("/discoveries", web::post().to(create_discovery))
-                .route("/discoveries", web::get().to(discovery_history)),
+                .route("/discoveries", web::get().to(discovery_history))
+                .route("/transactions", web::post().to(submit_transaction)),
         );
 }
 
@@ -253,7 +363,11 @@ mod tests {
         let pool = PgPoolOptions::new()
             .connect_lazy("postgres://tickerless:tickerless@127.0.0.1/tickerless")
             .expect("test database URL must be valid");
-        AppState::new(crate::catalog::CompanyCatalog::seeded(), pool)
+        AppState::new(
+            crate::catalog::CompanyCatalog::seeded(),
+            pool,
+            crate::chain::ChainClient::new("http://127.0.0.1:8545").expect("valid test RPC URL"),
+        )
     }
 
     #[actix_web::test]

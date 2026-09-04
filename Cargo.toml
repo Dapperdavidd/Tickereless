@@ -11,7 +11,7 @@ rust-version = "1.95"
 actix-web = "4.15.0"
 chrono = { version = "0.4.45", features = ["serde"] }
 dotenvy = "0.15.7"
-reqwest = { version = "0.13.4", default-features = false, features = ["charset", "rustls"] }
+reqwest = { version = "0.13.4", default-features = false, features = ["charset", "json", "rustls"] }
 rust_decimal = { version = "1.43.0", features = ["serde-with-str"] }
 scraper = "0.27.0"
 serde = { version = "1.0.229", features = ["derive"] }

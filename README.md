@@ -98,6 +98,23 @@ Quotes expose the selected asset and estimated fractional token amount. An asset
 is only marked `actionable`/`executable` after both its token contract and market
 addresses have been registered; seeded symbols alone never imply deployability.
 
+After the wallet broadcasts a market purchase, submit its transaction hash:
+
+```shell
+curl -X POST http://127.0.0.1:8080/v1/transactions \
+  -H 'content-type: application/json' \
+  -d '{
+    "wallet_address":"0x0000000000000000000000000000000000000001",
+    "company_slug":"nvidia",
+    "tx_hash":"0x0000000000000000000000000000000000000000000000000000000000000000"
+  }'
+```
+
+The API does not trust purchase amounts supplied by the client. It verifies the
+chain ID, sender, market, asset, receipt status, `buy` calldata, and `Purchased`
+event, then derives the USDC and token amounts from the confirmed transaction.
+Transaction hashes are recorded once only.
+
 Record the context that led to a company:
 
 ```shell
