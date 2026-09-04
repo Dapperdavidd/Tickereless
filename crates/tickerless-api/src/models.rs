@@ -11,16 +11,19 @@ pub struct HealthResponse {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SearchRequest {
     pub query: String,
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct LinkRequest {
     pub url: String,
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct LensRequest {
     pub text: Option<String>,
     #[serde(default)]
@@ -136,12 +139,12 @@ impl DiscoveryMethod {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CreateDiscoveryRequest {
     pub company_slug: String,
     pub method: DiscoveryMethod,
     pub source: String,
     pub explanation: String,
-    pub wallet_address: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -163,6 +166,7 @@ pub struct Discovery {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct SubmitTransactionRequest {
     pub wallet_address: String,
     pub company_slug: String,

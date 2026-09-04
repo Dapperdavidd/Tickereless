@@ -169,23 +169,10 @@ async fn create_discovery(
     input.company_slug = input.company_slug.trim().to_ascii_lowercase();
     input.source = input.source.trim().to_owned();
     input.explanation = input.explanation.trim().to_owned();
-    input.wallet_address = input
-        .wallet_address
-        .map(|wallet| wallet.trim().to_ascii_lowercase());
     if input.company_slug.is_empty() || input.source.is_empty() || input.explanation.is_empty() {
         return HttpResponse::BadRequest().json(ApiError::new(
             "invalid_discovery",
             "company_slug, source, and explanation must not be empty",
-        ));
-    }
-    if input
-        .wallet_address
-        .as_deref()
-        .is_some_and(|wallet| !valid_wallet(wallet))
-    {
-        return HttpResponse::BadRequest().json(ApiError::new(
-            "invalid_wallet",
-            "wallet_address must be a 20-byte hexadecimal address",
         ));
     }
     match database::create_discovery(&state.pool, &input).await {
@@ -513,7 +500,28 @@ mod tests {
             .uri("/v1/discoveries")
             .set_json(serde_json::json!({
                 "company_slug": "meta", "method": "search", "source": "",
-                "explanation": "resolved from Instagram", "wallet_address": "0x1234"
+                "explanation": "resolved from Instagram"
+            }))
+            .to_request();
+        assert_eq!(test::call_service(&app, request).await.status(), 400);
+    }
+
+    #[actix_web::test]
+    async fn discovery_rejects_unverified_wallet_attribution() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/discoveries")
+            .set_json(serde_json::json!({
+                "company_slug": "meta",
+                "method": "search",
+                "source": "company behind Instagram",
+                "explanation": "Instagram is associated with Meta Platforms.",
+                "wallet_address": "0x0000000000000000000000000000000000000001"
             }))
             .to_request();
         assert_eq!(test::call_service(&app, request).await.status(), 400);

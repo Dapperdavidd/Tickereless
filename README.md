@@ -134,8 +134,7 @@ curl -X POST http://127.0.0.1:8080/v1/discoveries \
     "company_slug":"meta",
     "method":"search",
     "source":"company behind Instagram",
-    "explanation":"Instagram is associated with Meta Platforms.",
-    "wallet_address":"0x0000000000000000000000000000000000000001"
+    "explanation":"Instagram is associated with Meta Platforms."
   }'
 ```
 
@@ -144,6 +143,10 @@ Retrieve a wallet's discovery history:
 ```shell
 curl 'http://127.0.0.1:8080/v1/discoveries?wallet_address=0x0000000000000000000000000000000000000001'
 ```
+
+New discoveries are anonymous. Supplying a discovery ID with a verified purchase
+links it to the transaction sender, preventing unverified callers from adding
+history to arbitrary wallets.
 
 Run the project checks:
 

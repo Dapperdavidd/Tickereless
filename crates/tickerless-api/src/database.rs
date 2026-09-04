@@ -120,26 +120,11 @@ pub async fn create_discovery(
     .await?
     .ok_or(CreateDiscoveryError::CompanyNotFound)?;
 
-    let user_id = if let Some(wallet) = input.wallet_address.as_deref() {
-        Some(
-            sqlx::query_scalar::<_, uuid::Uuid>(
-                "INSERT INTO users (wallet_address) VALUES ($1) \
-                 ON CONFLICT (wallet_address) DO UPDATE SET wallet_address = EXCLUDED.wallet_address \
-                 RETURNING id",
-            )
-            .bind(wallet.to_ascii_lowercase())
-            .fetch_one(&mut *transaction)
-            .await?,
-        )
-    } else {
-        None
-    };
-
     let (id, created_at) = sqlx::query_as::<_, (uuid::Uuid, chrono::DateTime<chrono::Utc>)>(
         "INSERT INTO discoveries (user_id, company_id, method, source, explanation) \
              VALUES ($1, $2, $3, $4, $5) RETURNING id, created_at",
     )
-    .bind(user_id)
+    .bind(Option::<uuid::Uuid>::None)
     .bind(company.0)
     .bind(input.method.as_str())
     .bind(input.source.trim())
