@@ -88,6 +88,10 @@ curl -X POST http://127.0.0.1:8080/v1/resolve/image \
 The API bounds and deduplicates recognition signals before resolving them through
 the same company registry used by Search and Link.
 
+JSON endpoints require `content-type: application/json`, reject unknown fields,
+and cap request bodies at 64 KiB. Payload errors use the same `{code, message}`
+shape as application errors so clients can handle them consistently.
+
 Request an exact-decimal ownership quote:
 
 ```shell

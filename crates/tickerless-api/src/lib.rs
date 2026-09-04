@@ -7,7 +7,7 @@ mod lens;
 mod link;
 mod models;
 
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{HttpResponse, Responder, error, error::JsonPayloadError, web};
 use catalog::CompanyCatalog;
 use models::{
     ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, LensRequest,
@@ -15,6 +15,8 @@ use models::{
     WorldQuery,
 };
 use sqlx::PgPool;
+
+const JSON_BODY_LIMIT: usize = 64 * 1024;
 
 pub struct AppState {
     catalog: CompanyCatalog,
@@ -344,6 +346,32 @@ fn valid_wallet(value: &str) -> bool {
 
 pub fn configure_app(config: &mut web::ServiceConfig) {
     config
+        .app_data(
+            web::JsonConfig::default()
+                .limit(JSON_BODY_LIMIT)
+                .content_type_required(true)
+                .error_handler(|json_error, _request| {
+                    let response = match &json_error {
+                        JsonPayloadError::OverflowKnownLength { .. }
+                        | JsonPayloadError::Overflow { .. } => HttpResponse::PayloadTooLarge()
+                            .json(ApiError::new(
+                                "json_payload_too_large",
+                                "JSON request body exceeds the 64 KiB limit",
+                            )),
+                        JsonPayloadError::ContentType => {
+                            HttpResponse::UnsupportedMediaType().json(ApiError::new(
+                                "unsupported_media_type",
+                                "content-type must be application/json",
+                            ))
+                        }
+                        _ => HttpResponse::BadRequest().json(ApiError::new(
+                            "invalid_json",
+                            "request body must be valid JSON with the expected fields",
+                        )),
+                    };
+                    error::InternalError::from_response(json_error, response).into()
+                }),
+        )
         .route("/health", web::get().to(health))
         .route("/ready", web::get().to(readiness))
         .service(
@@ -525,6 +553,62 @@ mod tests {
             }))
             .to_request();
         assert_eq!(test::call_service(&app, request).await.status(), 400);
+    }
+
+    #[actix_web::test]
+    async fn malformed_json_returns_a_structured_error() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/resolve/search")
+            .insert_header(("content-type", "application/json"))
+            .set_payload(r#"{"query":"meta"#)
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(response.status(), 400);
+        let body: serde_json::Value = test::read_body_json(response).await;
+        assert_eq!(body["code"], "invalid_json");
+    }
+
+    #[actix_web::test]
+    async fn json_content_type_is_required() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/resolve/search")
+            .set_payload(r#"{"query":"meta"}"#)
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(response.status(), 415);
+        let body: serde_json::Value = test::read_body_json(response).await;
+        assert_eq!(body["code"], "unsupported_media_type");
+    }
+
+    #[actix_web::test]
+    async fn oversized_json_is_rejected() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/resolve/search")
+            .insert_header(("content-type", "application/json"))
+            .set_payload(format!(r#"{{"query":"{}"}}"#, "x".repeat(65 * 1024)))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(response.status(), 413);
+        let body: serde_json::Value = test::read_body_json(response).await;
+        assert_eq!(body["code"], "json_payload_too_large");
     }
 
     #[actix_web::test]
