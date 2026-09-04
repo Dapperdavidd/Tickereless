@@ -75,6 +75,9 @@ pub struct TokenizedAsset {
     pub environment: String,
     pub contract_address: Option<String>,
     pub market_address: Option<String>,
+    pub payment_token_address: Option<String>,
+    pub chain_id: Option<i64>,
+    pub explorer_url: Option<String>,
     #[serde(with = "rust_decimal::serde::str")]
     pub price_usdc: Decimal,
 }
@@ -97,6 +100,9 @@ pub struct OwnershipQuote<'a> {
     pub estimated_token_amount: Decimal,
     pub contract_address: Option<&'a str>,
     pub market_address: Option<&'a str>,
+    pub payment_token_address: Option<&'a str>,
+    pub chain_id: Option<i64>,
+    pub explorer_url: Option<&'a str>,
     pub executable: bool,
 }
 

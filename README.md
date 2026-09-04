@@ -153,3 +153,15 @@ forge script contracts/script/Deploy.s.sol:DeployTickerless \
   --rpc-url "$BASE_SEPOLIA_RPC_URL" \
   --broadcast
 ```
+
+After deployment, copy the returned addresses into the corresponding
+`TICKERLESS_*_ADDRESS` values in `.env`, then register the complete deployment
+atomically:
+
+```shell
+cargo run -p tickerless-api --bin register_deployment
+```
+
+The command validates every address, chain ID, and HTTPS explorer URL before
+updating all four registry assets. Quotes and resolver results only become
+executable/actionable after this registration succeeds.

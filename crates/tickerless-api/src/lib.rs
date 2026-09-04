@@ -143,7 +143,13 @@ async fn ownership_quote(
         estimated_token_amount: (amount / asset.price_usdc).round_dp(18),
         contract_address: asset.contract_address.as_deref(),
         market_address: asset.market_address.as_deref(),
-        executable: asset.contract_address.is_some() && asset.market_address.is_some(),
+        payment_token_address: asset.payment_token_address.as_deref(),
+        chain_id: asset.chain_id,
+        explorer_url: asset.explorer_url.as_deref(),
+        executable: asset.contract_address.is_some()
+            && asset.market_address.is_some()
+            && asset.payment_token_address.is_some()
+            && asset.chain_id.is_some(),
     };
     HttpResponse::Ok().json(quote)
 }

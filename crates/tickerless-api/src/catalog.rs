@@ -79,7 +79,10 @@ fn score<'a>(company: &'a Company, query: &str) -> Option<SearchMatch<'a>> {
         reason,
         confidence,
         actionable: company.asset.as_ref().is_some_and(|asset| {
-            asset.contract_address.is_some() && asset.market_address.is_some()
+            asset.contract_address.is_some()
+                && asset.market_address.is_some()
+                && asset.payment_token_address.is_some()
+                && asset.chain_id.is_some()
         }),
         role: None,
     })
@@ -112,6 +115,9 @@ fn asset(symbol: &str) -> Option<TokenizedAsset> {
         environment: "demo".to_owned(),
         contract_address: None,
         market_address: None,
+        payment_token_address: None,
+        chain_id: None,
+        explorer_url: None,
         price_usdc: match symbol {
             "tAAPLc" => rust_decimal::Decimal::new(200, 0),
             "tNVDAc" => rust_decimal::Decimal::new(180, 0),

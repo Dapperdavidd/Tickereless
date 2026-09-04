@@ -21,6 +21,9 @@ struct CompanyRow {
     contract_address: Option<String>,
     market_address: Option<String>,
     price_usdc: Option<rust_decimal::Decimal>,
+    payment_token_address: Option<String>,
+    chain_id: Option<i64>,
+    explorer_url: Option<String>,
 }
 
 pub async fn connect(database_url: &str) -> Result<PgPool, sqlx::Error> {
@@ -37,7 +40,8 @@ pub async fn migrate(pool: &PgPool) -> Result<(), sqlx::migrate::MigrateError> {
 pub async fn load_catalog(pool: &PgPool) -> Result<CompanyCatalog, sqlx::Error> {
     let rows = sqlx::query_as::<_, CompanyRow>(
         "SELECT c.slug, c.name, c.ticker, c.description, a.symbol, a.network, \
-         a.environment, a.contract_address, a.market_address, a.price_usdc \
+         a.environment, a.contract_address, a.market_address, a.price_usdc, \
+         a.payment_token_address, a.chain_id, a.explorer_url \
          FROM companies c LEFT JOIN tokenized_assets a \
          ON a.company_id = c.id AND a.active = true AND a.network = 'Base Sepolia' \
          AND a.environment = 'demo' ORDER BY c.name",
@@ -70,6 +74,9 @@ pub async fn load_catalog(pool: &PgPool) -> Result<CompanyCatalog, sqlx::Error> 
                 contract_address: row.contract_address,
                 market_address: row.market_address,
                 price_usdc: row.price_usdc.expect("asset price is non-null"),
+                payment_token_address: row.payment_token_address,
+                chain_id: row.chain_id,
+                explorer_url: row.explorer_url,
             });
             Company {
                 aliases: aliases_by_slug.remove(&row.slug).unwrap_or_default(),
@@ -164,4 +171,38 @@ pub async fn discovery_history(
     .bind(limit)
     .fetch_all(pool)
     .await
+}
+
+pub struct DeploymentRegistration {
+    pub market_address: String,
+    pub payment_token_address: String,
+    pub chain_id: i64,
+    pub explorer_url: String,
+    pub assets: Vec<(String, String)>,
+}
+
+pub async fn register_deployment(
+    pool: &PgPool,
+    registration: &DeploymentRegistration,
+) -> Result<(), sqlx::Error> {
+    let mut transaction = pool.begin().await?;
+    for (symbol, contract_address) in &registration.assets {
+        let result = sqlx::query(
+            "UPDATE tokenized_assets SET contract_address = $1, market_address = $2, \
+             payment_token_address = $3, chain_id = $4, explorer_url = $5 \
+             WHERE symbol = $6 AND network = 'Base Sepolia' AND environment = 'demo'",
+        )
+        .bind(contract_address)
+        .bind(&registration.market_address)
+        .bind(&registration.payment_token_address)
+        .bind(registration.chain_id)
+        .bind(&registration.explorer_url)
+        .bind(symbol)
+        .execute(&mut *transaction)
+        .await?;
+        if result.rows_affected() != 1 {
+            return Err(sqlx::Error::RowNotFound);
+        }
+    }
+    transaction.commit().await
 }
