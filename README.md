@@ -14,7 +14,27 @@ search / lens / link -> company -> equity -> tokenized asset -> Base
 ```
 
 Development begins with the Rust API in `crates/tickerless-api`. The Flutter
-client and Base contracts will be introduced in later phases.
+client lives in `apps/mobile`, and the demo Base contracts live in `contracts`.
+
+## Run the mobile app
+
+The Flutter client targets iOS and Android. Its current onboarding buttons all
+enter the demo while authentication is intentionally deferred. Every ownership
+surface is labeled as Base Sepolia and uses demo assets.
+
+```shell
+cd apps/mobile
+flutter pub get
+flutter run
+```
+
+Run its local checks with:
+
+```shell
+dart format --output=none --set-exit-if-changed lib test
+flutter analyze
+flutter test
+```
 
 ## Run the API
 
