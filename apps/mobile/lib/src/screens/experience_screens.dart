@@ -95,20 +95,9 @@ class LensScreen extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: DecoratedBox(
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [Color(0xFF6E7375), Color(0xFF171A1C), Colors.black],
-                  radius: 1.1,
-                ),
-              ),
-              child: const Center(
-                child: Icon(
-                  Icons.phone_iphone,
-                  size: 230,
-                  color: Color(0xFFB9B8B3),
-                ),
-              ),
+            child: Image.asset(
+              'assets/images/lens-phone.png',
+              fit: BoxFit.cover,
             ),
           ),
           const Positioned(left: 20, top: 14, child: BackButton()),

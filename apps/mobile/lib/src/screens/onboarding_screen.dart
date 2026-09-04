@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
-import '../widgets/space_orb.dart';
 import '../widgets/tickerless_wordmark.dart';
 import 'home_shell.dart';
 
@@ -141,7 +140,16 @@ class _OnboardingPage extends StatelessWidget {
       Expanded(
         child: Center(
           child: icon == null
-              ? const SpaceOrb()
+              ? ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: Image.asset(
+                    'assets/images/earth-onboarding.png',
+                    width: double.infinity,
+                    height: double.infinity,
+                    fit: BoxFit.cover,
+                    alignment: Alignment.bottomCenter,
+                  ),
+                )
               : Container(
                   width: 120,
                   height: 120,
