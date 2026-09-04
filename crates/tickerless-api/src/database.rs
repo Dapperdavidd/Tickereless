@@ -96,6 +96,7 @@ pub async fn load_catalog(pool: &PgPool) -> Result<CompanyCatalog, sqlx::Error> 
     Ok(CompanyCatalog::new(companies))
 }
 
+#[derive(Debug)]
 pub enum CreateDiscoveryError {
     CompanyNotFound,
     Database(sqlx::Error),
@@ -196,6 +197,7 @@ pub async fn register_deployment(
     transaction.commit().await
 }
 
+#[derive(Debug)]
 pub enum RecordTransactionError {
     DiscoveryMismatch,
     Duplicate,
@@ -361,4 +363,86 @@ pub async fn world(pool: &PgPool, wallet_address: &str) -> Result<WorldSummary, 
         discovery_count,
         companies,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use rust_decimal::Decimal;
+    use sqlx::PgPool;
+    use uuid::Uuid;
+
+    use super::{
+        MIGRATOR, create_discovery, discovery_history, load_catalog, record_transaction, world,
+    };
+    use crate::{
+        chain::VerifiedPurchase,
+        models::{CreateDiscoveryRequest, DiscoveryMethod, SubmitTransactionRequest},
+    };
+
+    const WALLET: &str = "0x0000000000000000000000000000000000000001";
+
+    #[sqlx::test(migrator = "MIGRATOR")]
+    async fn migrations_seed_the_resolvable_catalog(pool: PgPool) {
+        let catalog = load_catalog(&pool).await.expect("catalog should load");
+        let meta = catalog
+            .find_by_slug("meta")
+            .expect("seeded Meta company should exist");
+        assert_eq!(meta.ticker, "META");
+        assert_eq!(
+            meta.asset.as_ref().map(|asset| asset.symbol.as_str()),
+            Some("tMETAc")
+        );
+    }
+
+    #[sqlx::test(migrator = "MIGRATOR")]
+    async fn verified_purchase_claims_discovery_and_builds_world(pool: PgPool) {
+        let discovery = create_discovery(
+            &pool,
+            &CreateDiscoveryRequest {
+                company_slug: "nvidia".to_owned(),
+                method: DiscoveryMethod::Lens,
+                source: "GeForce RTX".to_owned(),
+                explanation: "GeForce is an NVIDIA product family.".to_owned(),
+            },
+        )
+        .await
+        .expect("discovery should be created");
+        let initial_user =
+            sqlx::query_scalar::<_, Option<Uuid>>("SELECT user_id FROM discoveries WHERE id = $1")
+                .bind(discovery.id)
+                .fetch_one(&pool)
+                .await
+                .expect("discovery should exist");
+        assert!(initial_user.is_none());
+
+        let input = SubmitTransactionRequest {
+            wallet_address: WALLET.to_owned(),
+            company_slug: "nvidia".to_owned(),
+            discovery_id: Some(discovery.id),
+            tx_hash: format!("0x{}", "1".repeat(64)),
+        };
+        record_transaction(
+            &pool,
+            &input,
+            &VerifiedPurchase {
+                amount_usdc: Decimal::new(9_000_000, 6),
+                token_amount: Decimal::new(5, 2),
+            },
+        )
+        .await
+        .expect("verified purchase should be recorded");
+
+        let history = discovery_history(&pool, WALLET, 50)
+            .await
+            .expect("history should load");
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].id, discovery.id);
+
+        let summary = world(&pool, WALLET).await.expect("world should load");
+        assert_eq!(summary.total_owned_usdc, Decimal::new(9, 0));
+        assert_eq!(summary.company_count, 1);
+        assert_eq!(summary.discovery_count, 1);
+        assert_eq!(summary.companies[0].token_amount, Decimal::new(5, 2));
+        assert_eq!(summary.companies[0].discoveries[0].method, "lens");
+    }
 }
