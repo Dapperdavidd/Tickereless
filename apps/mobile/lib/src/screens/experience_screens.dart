@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/company.dart';
 import '../services/api_client.dart';
+import '../state/app_store.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 
@@ -435,15 +436,23 @@ class _BuyScreenState extends State<BuyScreen> {
           ),
           const SizedBox(height: 24),
           FilledButton(
-            onPressed: () => openScreen(
-              context,
-              ConfirmedScreen(
-                company: widget.company,
-                amount: amount,
-                tokens: tokens,
-                source: widget.source,
-              ),
-            ),
+            onPressed: () {
+              appStore.record(
+                widget.company,
+                amount.toDouble(),
+                tokens,
+                widget.source,
+              );
+              openScreen(
+                context,
+                ConfirmedScreen(
+                  company: widget.company,
+                  amount: amount,
+                  tokens: tokens,
+                  source: widget.source,
+                ),
+              );
+            },
             child: const Text('Review Purchase'),
           ),
           const SizedBox(height: 12),

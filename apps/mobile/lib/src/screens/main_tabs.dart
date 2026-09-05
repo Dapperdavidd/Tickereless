@@ -2,46 +2,39 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
+import '../state/app_store.dart';
 
 class WorldScreen extends StatelessWidget {
   const WorldScreen({super.key});
   @override
-  Widget build(BuildContext context) => const _TabList(
-    title: 'Your World',
-    subtitle: r'3 companies · 5 discoveries · $27.00',
-    children: [
-      _Position(
-        name: 'Apple',
-        symbol: 'tAAPLc',
-        amount: r'$14.00',
-        source: 'iPhone · Lens',
-        color: Colors.white,
-      ),
-      _Position(
-        name: 'NVIDIA',
-        symbol: 'tNVDAc',
-        amount: r'$8.00',
-        source: 'AI article · Link',
-        color: Color(0xFF9BFF00),
-      ),
-      _Position(
-        name: 'Meta',
-        symbol: 'tMETAc',
-        amount: r'$5.00',
-        source: 'Instagram · Search',
-        color: Color(0xFF38A5FF),
-      ),
-      GlassCard(
-        child: Text(
-          'Everyday things.\nExtraordinary ownership.',
-          style: TextStyle(
-            fontSize: 23,
-            height: 1.05,
-            fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: appStore,
+    builder: (context, _) => _TabList(
+      title: 'Your World',
+      subtitle:
+          '${appStore.positions.length} companies · ${appStore.discoveryCount} discoveries · \$${appStore.total.toStringAsFixed(2)}',
+      children: [
+        ...appStore.positions.map(
+          (position) => _Position(
+            name: position.company.name,
+            symbol: position.company.symbol,
+            amount: '\$${position.invested.toStringAsFixed(2)}',
+            source: position.sources.join(', '),
+            color: position.company.color,
           ),
         ),
-      ),
-    ],
+        const GlassCard(
+          child: Text(
+            'Everyday things.\nExtraordinary ownership.',
+            style: TextStyle(
+              fontSize: 23,
+              height: 1.05,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ],
+    ),
   );
 }
 
