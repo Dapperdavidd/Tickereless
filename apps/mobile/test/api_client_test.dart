@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -20,5 +22,23 @@ void main() {
     expect(matches.single.company.symbol, 'tMETAc');
     expect(matches.single.company.price, 500);
     expect(matches.single.confidence, .95);
+  });
+
+  test('lens sends OCR text and visual labels to the resolver', () async {
+    final api = TickerlessApi(
+      client: MockClient((request) async {
+        expect(request.url.path, '/v1/resolve/image');
+        final body = jsonDecode(request.body) as Map<String, dynamic>;
+        expect(body['text'], 'GEFORCE RTX');
+        expect(body['labels'], ['graphics card', 'computer hardware']);
+        return http.Response('{"matches":[]}', 200);
+      }),
+    );
+
+    final matches = await api.lens(
+      'GEFORCE RTX',
+      labels: ['graphics card', 'computer hardware'],
+    );
+    expect(matches, isEmpty);
   });
 }
