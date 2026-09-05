@@ -4,6 +4,7 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tickerless_wordmark.dart';
 import 'experience_screens.dart';
+import 'functional_lens_screen.dart';
 import 'main_tabs.dart';
 
 class HomeShell extends StatefulWidget {
@@ -99,7 +100,7 @@ class _DiscoverHome extends StatelessWidget {
               child: _EntryTile(
                 icon: Icons.center_focus_strong,
                 label: 'Lens',
-                onTap: () => openScreen(context, const LensScreen()),
+                onTap: () => openScreen(context, const FunctionalLensScreen()),
               ),
             ),
             const SizedBox(width: 12),

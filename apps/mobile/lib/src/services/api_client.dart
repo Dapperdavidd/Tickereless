@@ -21,6 +21,25 @@ class TickerlessApi {
   Future<List<CompanyMatch>> link(String url) =>
       _resolve('/v1/resolve/link', {'url': url});
 
+  Future<List<CompanyMatch>> lens(String text) async {
+    final response = await _client
+        .post(
+          Uri.parse('$baseUrl/v1/resolve/image'),
+          headers: {'content-type': 'application/json'},
+          body: jsonEncode({'text': text, 'labels': <String>[]}),
+        )
+        .timeout(const Duration(seconds: 12));
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        decoded['message']?.toString() ?? 'Recognition failed',
+      );
+    }
+    return (decoded['matches'] as List<dynamic>? ?? const [])
+        .map((value) => CompanyMatch.fromJson(value as Map<String, dynamic>))
+        .toList();
+  }
+
   Future<List<CompanyMatch>> _resolve(
     String path,
     Map<String, String> body,
