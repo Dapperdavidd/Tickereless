@@ -1,6 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:flutter/services.dart';
 
 import '../models/company.dart';
 import '../services/api_client.dart';
@@ -15,7 +15,7 @@ class FunctionalLensScreen extends StatefulWidget {
 
 class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
   CameraController? camera;
-  final recognizer = TextRecognizer();
+  static const ocr = MethodChannel('com.tickerless/vision');
   final api = TickerlessApi();
   CompanyMatch? match;
   String? note;
@@ -62,11 +62,11 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
     try {
       if (camera case final active? when active.value.isInitialized) {
         final capture = await active.takePicture();
-        final result = await recognizer.processImage(
-          InputImage.fromFilePath(capture.path),
-        );
-        if (result.text.trim().isNotEmpty) {
-          text = result.text;
+        final recognized = await ocr.invokeMethod<String>('recognizeText', {
+          'path': capture.path,
+        });
+        if (recognized != null && recognized.trim().isNotEmpty) {
+          text = recognized;
         }
       }
       final matches = await api.lens(text);
@@ -103,7 +103,6 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
   @override
   void dispose() {
     camera?.dispose();
-    recognizer.close();
     super.dispose();
   }
 
