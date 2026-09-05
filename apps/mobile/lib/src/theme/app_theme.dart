@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppColors {
-  static const background = Color(0xFF02070A);
-  static const surface = Color(0xFF071117);
-  static const surfaceRaised = Color(0xFF0B1820);
-  static const border = Color(0xFF29404D);
+  static const background = Color(0xFF010609);
+  static const surface = Color(0xFF061016);
+  static const surfaceRaised = Color(0xFF09151C);
+  static const border = Color(0xFF253B47);
   static const muted = Color(0xFF8DA1AD);
   static const blue = Color(0xFF69C8FF);
   static const green = Color(0xFF36F46B);
@@ -28,7 +28,7 @@ abstract final class AppTheme {
       foregroundColor: Colors.white,
     ),
     navigationBarTheme: NavigationBarThemeData(
-      height: 72,
+      height: 66,
       backgroundColor: AppColors.background,
       indicatorColor: Colors.white.withValues(alpha: 0.12),
       labelTextStyle: WidgetStateProperty.resolveWith(
@@ -78,5 +78,6 @@ abstract final class AppTheme {
       ),
     ),
     dividerColor: AppColors.border,
+    splashFactory: InkSparkle.splashFactory,
   );
 }
