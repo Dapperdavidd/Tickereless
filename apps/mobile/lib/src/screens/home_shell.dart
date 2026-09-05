@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
+import '../models/company.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/tickerless_wordmark.dart';
 import 'experience_screens.dart';
@@ -191,6 +192,93 @@ class _DiscoverHome extends StatelessWidget {
             ),
           ],
         ),
+        const SizedBox(height: 26),
+        const Text(
+          'Things people are discovering',
+          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        ...[
+          DemoCompanies.apple,
+          DemoCompanies.nvidia,
+          DemoCompanies.meta,
+          DemoCompanies.alphabet,
+        ].map(
+          (company) => Padding(
+            padding: const EdgeInsets.only(bottom: 9),
+            child: _DiscoveryRow(
+              company: company,
+              onTap: () => openScreen(
+                context,
+                PassportScreen(company: company, source: 'Trending · Discover'),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _DiscoveryRow extends StatelessWidget {
+  const _DiscoveryRow({required this.company, required this.onTap});
+  final Company company;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => GlassCard(
+    onTap: onTap,
+    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 11),
+    child: Row(
+      children: [
+        CircleAvatar(
+          radius: 20,
+          backgroundColor: company.color,
+          child: Icon(
+            company.ticker == 'AAPL'
+                ? Icons.apple
+                : company.ticker == 'GOOGL'
+                ? Icons.g_mobiledata
+                : company.ticker == 'META'
+                ? Icons.all_inclusive
+                : Icons.memory,
+            color: Colors.black,
+            size: 23,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                company.name,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                '${company.symbol} · ${company.products.first}',
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              '+${company.change}%',
+              style: const TextStyle(
+                color: AppColors.green,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 4),
+            const Text('Own', style: TextStyle(fontSize: 10)),
+          ],
+        ),
+        const SizedBox(width: 4),
+        const Icon(Icons.chevron_right, size: 18),
       ],
     ),
   );
