@@ -277,60 +277,97 @@ class PassportScreen extends StatelessWidget {
   final String source;
 
   @override
-  Widget build(BuildContext context) => _FlowScaffold(
-    title: 'Company Passport',
-    child: ListView(
-      padding: const EdgeInsets.all(20),
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text(
+        'Company Passport',
+        style: TextStyle(fontSize: 13, color: AppColors.muted),
+      ),
+      actions: [
+        IconButton(
+          onPressed: () {},
+          icon: const Icon(Icons.ios_share_outlined),
+        ),
+        IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz)),
+      ],
+    ),
+    body: ListView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
       children: [
-        Center(
-          child: CircleAvatar(
-            radius: 42,
-            backgroundColor: company.color,
-            child: Icon(
-              company == DemoCompanies.apple ? Icons.apple : Icons.memory,
-              color: Colors.black,
-              size: 48,
+        Container(
+          height: 185,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                company.color.withValues(alpha: .18),
+                AppColors.background,
+              ],
+            ),
+          ),
+          child: Center(
+            child: CircleAvatar(
+              radius: 52,
+              backgroundColor: company.color,
+              child: Icon(
+                company == DemoCompanies.apple ? Icons.apple : Icons.memory,
+                color: Colors.black,
+                size: 58,
+              ),
             ),
           ),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 16),
         Text(
           company.name,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w700),
+          style: const TextStyle(
+            fontSize: 32,
+            height: 1,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.1,
+          ),
         ),
+        const SizedBox(height: 6),
         Text(
-          '${company.ticker} · Base Sepolia',
-          textAlign: TextAlign.center,
-          style: const TextStyle(color: AppColors.muted),
+          '${company.ticker}c  ·  Base Sepolia',
+          style: const TextStyle(color: AppColors.muted, fontSize: 12),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 12),
         Text(
           company.description,
-          textAlign: TextAlign.center,
-          style: const TextStyle(height: 1.5),
+          style: const TextStyle(height: 1.45, color: Color(0xFFD4DEE3)),
         ),
-        const SizedBox(height: 18),
-        Wrap(
-          alignment: WrapAlignment.center,
-          spacing: 8,
-          children: company.products.map(_Pill.new).toList(),
-        ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, children: company.products.map(_Pill.new).toList()),
+        const SizedBox(height: 14),
         GlassCard(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                '\$${company.price.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w700,
-                ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '\$${company.price.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 25,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    '+${company.change}% today',
+                    style: const TextStyle(
+                      color: AppColors.green,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
-              Text(
-                '+${company.change}% today',
-                style: const TextStyle(color: AppColors.green),
+              const SizedBox(
+                width: 100,
+                child: Icon(Icons.show_chart, color: AppColors.green, size: 52),
               ),
             ],
           ),
@@ -341,10 +378,19 @@ class PassportScreen extends StatelessWidget {
               openScreen(context, BuyScreen(company: company, source: source)),
           child: Text('Own ${company.name}'),
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 22),
+        const Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _PassportTab('About', selected: true),
+            _PassportTab('Products'),
+            _PassportTab('News'),
+          ],
+        ),
+        const Divider(height: 20),
         const Text(
           'Discovered through',
-          style: TextStyle(color: AppColors.muted),
+          style: TextStyle(color: AppColors.muted, fontSize: 11),
         ),
         const SizedBox(height: 10),
         GlassCard(
@@ -357,6 +403,21 @@ class PassportScreen extends StatelessWidget {
           ),
         ),
       ],
+    ),
+  );
+}
+
+class _PassportTab extends StatelessWidget {
+  const _PassportTab(this.label, {this.selected = false});
+  final String label;
+  final bool selected;
+  @override
+  Widget build(BuildContext context) => Text(
+    label,
+    style: TextStyle(
+      color: selected ? Colors.white : AppColors.muted,
+      fontSize: 12,
+      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
     ),
   );
 }
