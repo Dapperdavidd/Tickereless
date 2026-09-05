@@ -86,7 +86,7 @@ class _WorldPage extends StatelessWidget {
         'assets/images/earth-onboarding.png',
         width: double.infinity,
         fit: BoxFit.cover,
-        alignment: imageBelow ? Alignment.bottomCenter : Alignment.topCenter,
+        alignment: Alignment.bottomCenter,
       ),
     );
     final copy = Padding(
