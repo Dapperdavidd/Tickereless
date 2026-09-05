@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/company.dart';
+import '../services/api_client.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 
@@ -17,6 +18,30 @@ class SearchScreen extends StatefulWidget {
 
 class _SearchScreenState extends State<SearchScreen> {
   final controller = TextEditingController(text: 'company behind instagram');
+  final api = TickerlessApi();
+  List<CompanyMatch>? matches;
+  String? error;
+  bool loading = false;
+
+  Future<void> submit() async {
+    if (controller.text.trim().isEmpty) return;
+    setState(() {
+      loading = true;
+      error = null;
+    });
+    try {
+      final result = await api.search(controller.text.trim());
+      if (mounted) setState(() => matches = result);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => error = 'Could not reach the resolver. Check that the Rust API is running.',
+        );
+      }
+    } finally {
+      if (mounted) setState(() => loading = false);
+    }
+  }
 
   @override
   void dispose() {
@@ -32,9 +57,14 @@ class _SearchScreenState extends State<SearchScreen> {
       children: [
         TextField(
           controller: controller,
-          decoration: const InputDecoration(
+          textInputAction: TextInputAction.search,
+          onSubmitted: (_) => submit(),
+          decoration: InputDecoration(
             prefixIcon: Icon(Icons.search),
-            suffixIcon: Icon(Icons.arrow_upward),
+            suffixIcon: IconButton(
+              onPressed: submit,
+              icon: const Icon(Icons.arrow_upward),
+            ),
           ),
         ),
         const SizedBox(height: 14),
@@ -48,17 +78,36 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        _CompanyResult(
-          company: DemoCompanies.meta,
-          reason: 'Instagram is a product of Meta Platforms',
-          onTap: () => openScreen(
-            context,
-            const PassportScreen(
-              company: DemoCompanies.meta,
-              source: '“company behind Instagram” · Search',
-            ),
+        if (loading) const Center(child: CircularProgressIndicator()),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(error!, style: const TextStyle(color: AppColors.red)),
           ),
-        ),
+        ...(matches ??
+                [
+                  const CompanyMatch(
+                    company: DemoCompanies.meta,
+                    reason: 'Instagram is a product of Meta Platforms',
+                    confidence: .98,
+                  ),
+                ])
+            .map(
+              (match) => Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: _CompanyResult(
+                  company: match.company,
+                  reason: match.reason,
+                  onTap: () => openScreen(
+                    context,
+                    PassportScreen(
+                      company: match.company,
+                      source: '“${controller.text.trim()}” · Search',
+                    ),
+                  ),
+                ),
+              ),
+            ),
         const SizedBox(height: 22),
         const Text(
           'Related results',
