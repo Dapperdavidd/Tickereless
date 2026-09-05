@@ -57,7 +57,9 @@ class _FunctionalLinkScreenState extends State<FunctionalLinkScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: const Text('Link Analysis')),
+    appBar: AppBar(
+      title: const Text('Link Analysis', style: TextStyle(fontSize: 15)),
+    ),
     body: ListView(
       padding: const EdgeInsets.all(20),
       children: [
@@ -75,7 +77,50 @@ class _FunctionalLinkScreenState extends State<FunctionalLinkScreen> {
           ),
         ),
         const SizedBox(height: 14),
-        FilledButton(
+        GlassCard(
+          onTap: loading ? null : analyze,
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            children: [
+              Container(
+                width: 64,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF111C23),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(
+                  Icons.memory,
+                  color: Color(0xFF9BFF00),
+                  size: 34,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'NVIDIA',
+                      style: TextStyle(color: AppColors.muted, fontSize: 10),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      'The next generation of AI computing',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.arrow_forward, size: 18),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton(
           onPressed: loading ? null : analyze,
           child: Text(loading ? 'Analyzing…' : 'Analyze Link'),
         ),
@@ -107,9 +152,17 @@ class _FunctionalLinkScreenState extends State<FunctionalLinkScreen> {
               ),
               child: Row(
                 children: [
-                  CircleAvatar(
-                    backgroundColor: match.company.color,
-                    child: const Icon(Icons.public, color: Colors.black),
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: match.company.color,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      _companyIcon(match.company),
+                      color: Colors.black,
+                    ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -166,3 +219,10 @@ class _FunctionalLinkScreenState extends State<FunctionalLinkScreen> {
     ),
   );
 }
+
+IconData _companyIcon(Company company) => switch (company.ticker) {
+  'AAPL' => Icons.apple,
+  'META' => Icons.all_inclusive,
+  'GOOGL' => Icons.g_mobiledata,
+  _ => Icons.memory,
+};

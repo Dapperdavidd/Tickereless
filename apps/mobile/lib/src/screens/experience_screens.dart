@@ -79,6 +79,35 @@ class _SearchScreenState extends State<SearchScreen> {
           ],
         ),
         const SizedBox(height: 24),
+        const GlassCard(
+          padding: EdgeInsets.all(12),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 22,
+                backgroundColor: Color(0xFFE94592),
+                child: Icon(Icons.camera_alt_outlined, color: Colors.white),
+              ),
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Instagram',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      'A product of Meta Platforms',
+                      style: TextStyle(color: AppColors.blue, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
         if (loading) const Center(child: CircularProgressIndicator()),
         if (error != null)
           Padding(
