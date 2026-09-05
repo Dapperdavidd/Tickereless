@@ -21,27 +21,33 @@ import Vision
       binaryMessenger: registrar.messenger()
     )
     channel.setMethodCallHandler { call, result in
-      guard call.method == "recognizeText",
+      guard (call.method == "recognizeText" || call.method == "analyzeImage"),
             let arguments = call.arguments as? [String: Any],
             let path = arguments["path"] as? String else {
         result(FlutterMethodNotImplemented)
         return
       }
-      let request = VNRecognizeTextRequest { request, error in
-        if let error {
-          result(FlutterError(code: "vision_error", message: error.localizedDescription, details: nil))
-          return
-        }
-        let text = (request.results as? [VNRecognizedTextObservation])?
-          .compactMap { $0.topCandidates(1).first?.string }
-          .joined(separator: "\n") ?? ""
-        result(text)
-      }
-      request.recognitionLevel = .accurate
-      request.usesLanguageCorrection = true
+      let textRequest = VNRecognizeTextRequest()
+      textRequest.recognitionLevel = .accurate
+      textRequest.usesLanguageCorrection = true
+      let classificationRequest = VNClassifyImageRequest()
       DispatchQueue.global(qos: .userInitiated).async {
         do {
-          try VNImageRequestHandler(url: URL(fileURLWithPath: path)).perform([request])
+          try VNImageRequestHandler(url: URL(fileURLWithPath: path)).perform(
+            call.method == "analyzeImage" ? [textRequest, classificationRequest] : [textRequest]
+          )
+          let text = textRequest.results?
+            .compactMap { $0.topCandidates(1).first?.string }
+            .joined(separator: "\n") ?? ""
+          if call.method == "recognizeText" {
+            result(text)
+            return
+          }
+          let labels = classificationRequest.results?
+            .filter { $0.confidence >= 0.15 }
+            .prefix(8)
+            .map(\.identifier) ?? []
+          result(["text": text, "labels": labels])
         } catch {
           result(FlutterError(code: "vision_error", message: error.localizedDescription, details: nil))
         }

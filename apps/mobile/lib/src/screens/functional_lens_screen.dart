@@ -59,21 +59,27 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
       note = null;
     });
     String? text;
+    var labels = <String>[];
     try {
       if (camera case final active? when active.value.isInitialized) {
         final capture = await active.takePicture();
-        final recognized = await ocr.invokeMethod<String>('recognizeText', {
-          'path': capture.path,
-        });
+        final analysis = await ocr.invokeMapMethod<String, dynamic>(
+          'analyzeImage',
+          {'path': capture.path},
+        );
+        final recognized = analysis?['text']?.toString();
         if (recognized != null && recognized.trim().isNotEmpty) {
           text = recognized;
         }
+        labels = (analysis?['labels'] as List<dynamic>? ?? const [])
+            .map((value) => value.toString())
+            .toList();
       } else {
         // The preview asset is an iPhone, so this is an explicit deterministic
         // demo input rather than a fallback for failed recognition.
         text = 'iPhone Apple';
       }
-      if (text == null) {
+      if (text == null && labels.isEmpty) {
         if (mounted) {
           setState(() {
             scanned = true;
@@ -83,7 +89,7 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
         }
         return;
       }
-      final matches = await api.lens(text);
+      final matches = await api.lens(text ?? '', labels: labels);
       if (mounted) {
         setState(() {
           scanned = true;

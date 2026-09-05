@@ -21,12 +21,15 @@ class TickerlessApi {
   Future<List<CompanyMatch>> link(String url) =>
       _resolve('/v1/resolve/link', {'url': url});
 
-  Future<List<CompanyMatch>> lens(String text) async {
+  Future<List<CompanyMatch>> lens(
+    String text, {
+    List<String> labels = const [],
+  }) async {
     final response = await _client
         .post(
           Uri.parse('$baseUrl/v1/resolve/image'),
           headers: {'content-type': 'application/json'},
-          body: jsonEncode({'text': text, 'labels': <String>[]}),
+          body: jsonEncode({'text': text, 'labels': labels}),
         )
         .timeout(const Duration(seconds: 12));
     final decoded = jsonDecode(response.body) as Map<String, dynamic>;
