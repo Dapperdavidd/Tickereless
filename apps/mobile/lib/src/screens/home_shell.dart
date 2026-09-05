@@ -5,6 +5,7 @@ import '../widgets/glass_card.dart';
 import '../widgets/tickerless_wordmark.dart';
 import 'experience_screens.dart';
 import 'functional_lens_screen.dart';
+import 'functional_link_screen.dart';
 import 'main_tabs.dart';
 
 class HomeShell extends StatefulWidget {
@@ -108,7 +109,7 @@ class _DiscoverHome extends StatelessWidget {
               child: _EntryTile(
                 icon: Icons.link,
                 label: 'Link',
-                onTap: () => openScreen(context, const LinkScreen()),
+                onTap: () => openScreen(context, const FunctionalLinkScreen()),
               ),
             ),
             const SizedBox(width: 12),
