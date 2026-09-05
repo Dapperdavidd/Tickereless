@@ -2,7 +2,6 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../models/company.dart';
 import '../services/api_client.dart';
 import '../theme/app_theme.dart';
 import 'experience_screens.dart';
@@ -19,6 +18,7 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
   final api = TickerlessApi();
   CompanyMatch? match;
   String? note;
+  bool scanned = false;
   bool busy = false;
   bool flash = false;
 
@@ -47,7 +47,7 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
       setState(() => camera = next);
     } catch (_) {
       if (mounted) {
-        setState(() => note = 'Camera unavailable · demo scan ready');
+        setState(() => note = 'Demo image · point and scan on a device');
       }
     }
   }
@@ -58,7 +58,7 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
       busy = true;
       note = null;
     });
-    var text = 'iPhone';
+    String? text;
     try {
       if (camera case final active? when active.value.isInitialized) {
         final capture = await active.takePicture();
@@ -68,16 +68,35 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
         if (recognized != null && recognized.trim().isNotEmpty) {
           text = recognized;
         }
+      } else {
+        // The preview asset is an iPhone, so this is an explicit deterministic
+        // demo input rather than a fallback for failed recognition.
+        text = 'iPhone Apple';
+      }
+      if (text == null) {
+        if (mounted) {
+          setState(() {
+            scanned = true;
+            match = null;
+            note = 'No supported company detected. Try visible product or brand text.';
+          });
+        }
+        return;
       }
       final matches = await api.lens(text);
       if (mounted) {
-        setState(() => match = matches.isEmpty ? fallback : matches.first);
+        setState(() {
+          scanned = true;
+          match = matches.firstOrNull;
+          note = matches.isEmpty ? 'No supported company detected.' : null;
+        });
       }
     } catch (_) {
       if (mounted) {
         setState(() {
-          match = fallback;
-          note = 'Offline demo result';
+          scanned = true;
+          match = null;
+          note = 'Lens could not reach the resolver. Try again.';
         });
       }
     } finally {
@@ -86,12 +105,6 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
       }
     }
   }
-
-  CompanyMatch get fallback => const CompanyMatch(
-    company: DemoCompanies.apple,
-    reason: 'iPhone is an Apple product',
-    confidence: .98,
-  );
 
   Future<void> toggleFlash() async {
     if (camera == null) return;
@@ -141,16 +154,7 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
                   icon: Icon(flash ? Icons.flash_on : Icons.flash_off),
                 ),
               ),
-              Center(
-                child: Container(
-                  width: 285,
-                  height: 330,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white, width: 1.3),
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                ),
-              ),
+              Center(child: const _FocusFrame(width: 285, height: 330)),
               Positioned(
                 left: 22,
                 right: 22,
@@ -158,7 +162,8 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
                 child: Column(
                   children: [
                     Text(
-                      match?.company.name ?? 'Point at something',
+                      match?.company.name ??
+                          (scanned ? 'Nothing matched' : 'Point at something'),
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
@@ -166,7 +171,9 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
                     ),
                     Text(
                       match == null
-                          ? 'Products, logos, receipts'
+                          ? (scanned
+                                ? 'Try AAPL, GOOGL, META or NVDA products'
+                                : 'Products, packaging, screens')
                           : '${(match!.confidence * 100).round()}% match · ${match!.company.symbol}',
                       style: const TextStyle(color: Colors.white70),
                     ),
@@ -196,6 +203,8 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
                                   color: Colors.black,
                                   strokeWidth: 2,
                                 )
+                              : scanned
+                              ? const Icon(Icons.refresh, color: Colors.black)
                               : null,
                         ),
                       )
@@ -210,11 +219,94 @@ class _FunctionalLensScreenState extends State<FunctionalLensScreen> {
                         ),
                         child: Text('Explore ${match!.company.name}'),
                       ),
+                    const SizedBox(height: 16),
+                    const _LensModes(),
                   ],
                 ),
               ),
             ],
           ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _FocusFrame extends StatelessWidget {
+  const _FocusFrame({required this.width, required this.height});
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: width,
+    height: height,
+    child: CustomPaint(painter: _CornerPainter()),
+  );
+}
+
+class _CornerPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+    const length = 28.0;
+    final path = Path()
+      ..moveTo(0, length)
+      ..lineTo(0, 0)
+      ..lineTo(length, 0)
+      ..moveTo(size.width - length, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, length)
+      ..moveTo(size.width, size.height - length)
+      ..lineTo(size.width, size.height)
+      ..lineTo(size.width - length, size.height)
+      ..moveTo(length, size.height)
+      ..lineTo(0, size.height)
+      ..lineTo(0, size.height - length);
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _LensModes extends StatelessWidget {
+  const _LensModes();
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 46,
+    padding: const EdgeInsets.all(4),
+    decoration: BoxDecoration(
+      color: const Color(0xDD061016),
+      border: Border.all(color: AppColors.border),
+      borderRadius: BorderRadius.circular(24),
+    ),
+    child: Row(
+      children: [
+        Expanded(
+          child: Container(
+            alignment: Alignment.center,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.all(Radius.circular(20)),
+            ),
+            child: const Text(
+              'Lens',
+              style: TextStyle(
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+        const Expanded(
+          child: Center(child: Text('Link', style: TextStyle(fontSize: 12))),
+        ),
+        const Expanded(
+          child: Center(child: Text('Search', style: TextStyle(fontSize: 12))),
         ),
       ],
     ),
