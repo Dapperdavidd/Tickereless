@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/space_orb.dart';
 import '../state/app_store.dart';
 
 class WorldScreen extends StatelessWidget {
@@ -43,8 +44,20 @@ class ActivityScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const _TabList(
     title: 'Discovery History',
-    subtitle: 'The path from attention to ownership.',
+    subtitle: 'Everything that caught your attention.',
     children: [
+      SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _Filter('All', selected: true),
+            _Filter('Lens'),
+            _Filter('Link'),
+            _Filter('Search'),
+          ],
+        ),
+      ),
+      _SectionLabel('Today'),
       _History(
         icon: Icons.center_focus_strong,
         title: 'iPhone',
@@ -63,6 +76,7 @@ class ActivityScreen extends StatelessWidget {
         detail: 'Meta · tMETAc',
         status: 'Owned',
       ),
+      _SectionLabel('Yesterday'),
       _History(
         icon: Icons.search,
         title: '“AI chips”',
@@ -78,8 +92,32 @@ class ProfileScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) => const _TabList(
     title: 'You',
-    subtitle: 'Explorer · 0x3f...7a9d',
+    subtitle: 'Your identity in the ownership layer.',
     children: [
+      GlassCard(
+        child: Row(
+          children: [
+            SpaceOrb(size: 64),
+            SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Explorer',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                  SizedBox(height: 3),
+                  Text(
+                    '0x3f...7a9d  ⧉',
+                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
       _Setting(icon: Icons.settings_outlined, label: 'Settings'),
       _Setting(
         icon: Icons.account_balance_wallet_outlined,
@@ -101,6 +139,7 @@ class ProfileScreen extends StatelessWidget {
           ],
         ),
       ),
+      _SignOutButton(),
     ],
   );
 }
@@ -174,7 +213,18 @@ class _Position extends StatelessWidget {
             ],
           ),
         ),
-        Text(amount, style: const TextStyle(fontWeight: FontWeight.w700)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(amount, style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 3),
+            const Text(
+              '+1.2%',
+              style: TextStyle(color: AppColors.green, fontSize: 11),
+            ),
+            const Icon(Icons.show_chart, color: AppColors.blue, size: 28),
+          ],
+        ),
       ],
     ),
   );
@@ -222,6 +272,54 @@ class _History extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _Filter extends StatelessWidget {
+  const _Filter(this.label, {this.selected = false});
+  final String label;
+  final bool selected;
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(right: 8),
+    padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 8),
+    decoration: BoxDecoration(
+      color: selected ? Colors.white : AppColors.surface,
+      border: Border.all(color: selected ? Colors.white : AppColors.border),
+      borderRadius: BorderRadius.circular(20),
+    ),
+    child: Text(
+      label,
+      style: TextStyle(
+        color: selected ? Colors.black : Colors.white,
+        fontSize: 11,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
+
+class _SectionLabel extends StatelessWidget {
+  const _SectionLabel(this.label);
+  final String label;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(top: 8),
+    child: Text(
+      label,
+      style: const TextStyle(
+        color: AppColors.muted,
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
+
+class _SignOutButton extends StatelessWidget {
+  const _SignOutButton();
+  @override
+  Widget build(BuildContext context) =>
+      OutlinedButton(onPressed: () {}, child: const Text('Sign Out'));
 }
 
 class _Setting extends StatelessWidget {

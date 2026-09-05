@@ -57,4 +57,16 @@ abstract final class DemoCompanies {
     price: 180,
     change: 2.4,
   );
+
+  static const alphabet = Company(
+    name: 'Alphabet',
+    ticker: 'GOOGL',
+    symbol: 'tGOOGLc',
+    description:
+        'The company behind Google Search, YouTube, Android, Gemini and more.',
+    products: ['Google', 'YouTube', 'Gemini'],
+    color: Color(0xFF4285F4),
+    price: 150,
+    change: 1.09,
+  );
 }

@@ -24,7 +24,7 @@ class _FunctionalLinkScreenState extends State<FunctionalLinkScreen> {
       confidence: .92,
     ),
     CompanyMatch(
-      company: DemoCompanies.meta,
+      company: DemoCompanies.alphabet,
       reason: 'Mentioned in the article',
       confidence: .24,
     ),
