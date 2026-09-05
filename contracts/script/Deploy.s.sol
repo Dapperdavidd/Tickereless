@@ -2,6 +2,7 @@
 pragma solidity ^0.8.30;
 
 import { DemoToken } from "../src/DemoToken.sol";
+import { DemoPaymentToken } from "../src/DemoPaymentToken.sol";
 import { TickerlessMarket } from "../src/TickerlessMarket.sol";
 
 interface VmScript {
@@ -14,7 +15,7 @@ contract DeployTickerless {
         VmScript(address(uint160(uint256(keccak256("hevm cheat code")))));
 
     struct Deployment {
-        DemoToken usdc;
+        DemoPaymentToken usdc;
         DemoToken apple;
         DemoToken nvidia;
         DemoToken meta;
@@ -25,7 +26,7 @@ contract DeployTickerless {
     function run() external returns (Deployment memory deployment) {
         vm.startBroadcast();
 
-        deployment.usdc = new DemoToken("Test USD Coin", "tUSDC", 6);
+        deployment.usdc = new DemoPaymentToken();
         deployment.apple = new DemoToken("Demo Apple", "tAAPLc", 18);
         deployment.nvidia = new DemoToken("Demo NVIDIA", "tNVDAc", 18);
         deployment.meta = new DemoToken("Demo Meta", "tMETAc", 18);

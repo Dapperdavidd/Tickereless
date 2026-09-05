@@ -61,6 +61,10 @@ contract DemoToken {
     }
 
     function mint(address recipient, uint256 amount) external onlyOwner {
+        _mint(recipient, amount);
+    }
+
+    function _mint(address recipient, uint256 amount) internal {
         if (recipient == address(0)) revert ZeroAddress();
         totalSupply += amount;
         balanceOf[recipient] += amount;

@@ -202,7 +202,8 @@ cargo test --workspace --all-features
 
 The Foundry project contains:
 
-- `DemoToken`, an owner-minted ERC-20-compatible token used for test USDC and demo equities.
+- `DemoToken`, an owner-minted ERC-20-compatible token used for demo equities.
+- `DemoPaymentToken`, a test USDC token that gives each demo wallet one self-service allocation.
 - `TickerlessMarket`, a fixed-price market that exchanges six-decimal test USDC for fractional
   18-decimal demo equities with a caller-provided minimum output.
 - A deployment script that creates tUSDC, tAAPLc, tNVDAc, tMETAc, and tGOOGLc, lists the four
