@@ -80,6 +80,27 @@ mod tests {
     }
 
     #[test]
+    fn resolves_a_broader_set_of_product_text() {
+        let catalog = CompanyCatalog::seeded();
+        for (text, expected) in [
+            ("Designed for iOS", "apple"),
+            ("Ray-Ban Meta smart glasses", "meta"),
+            ("Shot on Google Pixel", "alphabet"),
+            ("NVIDIA Jetson", "nvidia"),
+        ] {
+            let result = resolve(
+                &catalog,
+                LensRequest {
+                    text: Some(text.to_owned()),
+                    labels: vec![],
+                },
+            )
+            .expect("valid lens input");
+            assert_eq!(result.matches[0].company.slug, expected);
+        }
+    }
+
+    #[test]
     fn rejects_empty_signals() {
         assert!(matches!(
             resolve(

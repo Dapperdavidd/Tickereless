@@ -145,6 +145,12 @@ fn seed_companies() -> Vec<Company> {
                 "Apple Watch",
                 "Vision Pro",
                 "iPhone maker",
+                "iOS",
+                "App Store",
+                "Safari",
+                "Beats",
+                "Apple TV",
+                "Apple Music",
             ]
             .into_iter()
             .map(str::to_owned)
@@ -168,6 +174,10 @@ fn seed_companies() -> Vec<Company> {
                 "Facebook",
                 "Threads",
                 "Quest",
+                "Messenger",
+                "Oculus",
+                "Horizon",
+                "Ray-Ban Meta",
                 "company behind Instagram",
             ]
             .into_iter()
@@ -193,6 +203,12 @@ fn seed_companies() -> Vec<Company> {
                 "Chrome",
                 "Google Cloud",
                 "Waymo",
+                "Gmail",
+                "Google Maps",
+                "Pixel",
+                "Google Photos",
+                "Nest",
+                "Chromebook",
                 "company behind YouTube",
             ]
             .into_iter()
@@ -214,10 +230,21 @@ fn seed_companies() -> Vec<Company> {
             ticker: "NVDA".to_owned(),
             description: "Computing company known for GPUs and accelerated AI infrastructure."
                 .to_owned(),
-            aliases: ["GeForce", "RTX", "CUDA", "DGX", "GeForce GPUs"]
-                .into_iter()
-                .map(str::to_owned)
-                .collect(),
+            aliases: [
+                "GeForce",
+                "RTX",
+                "CUDA",
+                "DGX",
+                "GeForce GPUs",
+                "Omniverse",
+                "TensorRT",
+                "NVIDIA Shield",
+                "Jetson",
+                "G-SYNC",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
             themes: ["ai chips", "gpu infrastructure", "artificial intelligence"]
                 .into_iter()
                 .map(str::to_owned)
