@@ -11,6 +11,7 @@ interface VmScript {
 }
 
 contract DeployTickerless {
+    uint256 private constant BASE_SEPOLIA_CHAIN_ID = 84532;
     VmScript private constant vm =
         VmScript(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -23,7 +24,10 @@ contract DeployTickerless {
         TickerlessMarket market;
     }
 
+    error UnsupportedChain(uint256 chainId);
+
     function run() external returns (Deployment memory deployment) {
+        if (block.chainid != BASE_SEPOLIA_CHAIN_ID) revert UnsupportedChain(block.chainid);
         vm.startBroadcast();
 
         deployment.usdc = new DemoPaymentToken();

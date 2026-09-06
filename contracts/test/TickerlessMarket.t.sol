@@ -60,4 +60,36 @@ contract TickerlessMarketTest {
         vm.expectRevert(TickerlessMarket.UnsupportedAsset.selector);
         market.quote(address(unsupported), 1e6);
     }
+
+    function testZeroAmountCannotBeQuoted() public {
+        vm.expectRevert(TickerlessMarket.InvalidAmount.selector);
+        market.quote(address(equity), 0);
+    }
+
+    function testBuyerCannotSpendWithoutApproval() public {
+        vm.expectRevert(DemoToken.InsufficientAllowance.selector);
+        vm.prank(BUYER);
+        market.buy(address(equity), 5e6, 0);
+    }
+
+    function testOwnerCanWithdrawInventory() public {
+        market.withdrawAsset(address(equity), BUYER, 2e18);
+        require(equity.balanceOf(BUYER) == 2e18, "inventory was not withdrawn");
+    }
+
+    function testNonOwnerCannotWithdrawInventory() public {
+        vm.expectRevert(TickerlessMarket.Unauthorized.selector);
+        vm.prank(BUYER);
+        market.withdrawAsset(address(equity), BUYER, 2e18);
+    }
+
+    function testOwnershipTransferMovesAdministration() public {
+        market.transferOwnership(BUYER);
+        vm.expectRevert(TickerlessMarket.Unauthorized.selector);
+        market.setAssetPrice(address(equity), 100e6);
+
+        vm.prank(BUYER);
+        market.setAssetPrice(address(equity), 100e6);
+        require(market.priceUsdc(address(equity)) == 100e6, "new owner cannot administer");
+    }
 }
