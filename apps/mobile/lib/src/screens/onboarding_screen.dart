@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
+import '../services/google_auth_service.dart';
 import '../theme/app_theme.dart';
 import '../widgets/tickerless_wordmark.dart';
 import 'home_shell.dart';
@@ -12,11 +15,31 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
   final controller = PageController();
+  final googleAuth = GoogleAuthService();
   int page = 0;
+  bool googleBusy = false;
 
   void enterApp() => Navigator.of(
     context,
   ).pushReplacement(MaterialPageRoute<void>(builder: (_) => const HomeShell()));
+
+  Future<void> signInWithGoogle() async {
+    if (googleBusy) return;
+    setState(() => googleBusy = true);
+    try {
+      await googleAuth.signIn();
+      if (mounted) enterApp();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Google sign-in failed: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => googleBusy = false);
+    }
+  }
+
   @override
   void dispose() {
     controller.dispose();
@@ -53,7 +76,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           _Dots(page: page),
           Padding(
             padding: const EdgeInsets.fromLTRB(24, 18, 24, 10),
-            child: _AuthActions(onEnter: enterApp),
+            child: _AuthActions(
+              onEnter: enterApp,
+              onGoogle: googleBusy ? null : () => unawaited(signInWithGoogle()),
+            ),
           ),
           const Padding(
             padding: EdgeInsets.only(bottom: 18),
@@ -234,8 +260,9 @@ class _Dots extends StatelessWidget {
 }
 
 class _AuthActions extends StatelessWidget {
-  const _AuthActions({required this.onEnter});
+  const _AuthActions({required this.onEnter, required this.onGoogle});
   final VoidCallback onEnter;
+  final VoidCallback? onGoogle;
   @override
   Widget build(BuildContext context) => Column(
     children: [
@@ -249,12 +276,10 @@ class _AuthActions extends StatelessWidget {
       Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          _AuthButton(label: 'Apple', icon: Icons.apple, onTap: onEnter),
-          const SizedBox(width: 14),
           _AuthButton(
             label: 'Google',
             icon: Icons.g_mobiledata,
-            onTap: onEnter,
+            onTap: onGoogle,
           ),
           const SizedBox(width: 14),
           _AuthButton(label: 'Email', icon: Icons.mail_outline, onTap: onEnter),
@@ -282,7 +307,7 @@ class _AuthButton extends StatelessWidget {
   });
   final String label;
   final IconData icon;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => Semantics(
     label: 'Continue with $label',

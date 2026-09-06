@@ -2,6 +2,19 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>GIDClientID</key>
+	<string>322967876753-in0nbi712374ccro0614ngpq254tmdfl.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>322967876753-5cn9c50qlr0ffmbiq5ks30pir8cub2q8.apps.googleusercontent.com</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.322967876753-in0nbi712374ccro0614ngpq254tmdfl</string>
+			</array>
+		</dict>
+	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Tickerless uses the camera to recognize products and companies.</string>
 	<key>NSLocalNetworkUsageDescription</key>

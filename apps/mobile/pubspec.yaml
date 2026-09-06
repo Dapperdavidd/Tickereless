@@ -36,6 +36,8 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.6.0
   camera: ^0.12.1
+  google_sign_in: ^7.2.0
+  flutter_secure_storage: ^11.0.0
 dev_dependencies:
   flutter_test:
     sdk: flutter

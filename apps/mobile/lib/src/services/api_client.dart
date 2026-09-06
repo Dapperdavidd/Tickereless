@@ -43,6 +43,23 @@ class TickerlessApi {
         .toList();
   }
 
+  Future<AuthSession> googleLogin(String idToken) async {
+    final response = await _client
+        .post(
+          Uri.parse('$baseUrl/v1/auth/google'),
+          headers: {'content-type': 'application/json'},
+          body: jsonEncode({'id_token': idToken}),
+        )
+        .timeout(const Duration(seconds: 12));
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        decoded['message']?.toString() ?? 'Google sign-in failed',
+      );
+    }
+    return AuthSession.fromJson(decoded);
+  }
+
   Future<List<CompanyMatch>> _resolve(
     String path,
     Map<String, String> body,
@@ -63,6 +80,21 @@ class TickerlessApi {
         .map((value) => CompanyMatch.fromJson(value as Map<String, dynamic>))
         .toList();
   }
+}
+
+class AuthSession {
+  const AuthSession({required this.accessToken, required this.email});
+
+  factory AuthSession.fromJson(Map<String, dynamic> json) {
+    final user = json['user'] as Map<String, dynamic>;
+    return AuthSession(
+      accessToken: json['access_token'].toString(),
+      email: user['email'].toString(),
+    );
+  }
+
+  final String accessToken;
+  final String email;
 }
 
 class CompanyMatch {

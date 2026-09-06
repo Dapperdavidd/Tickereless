@@ -16,18 +16,12 @@ void main() {
     expect(find.text('Discover'), findsOneWidget);
   });
 
-  testWidgets('authentication buttons remain visible and enter the app', (
-    tester,
-  ) async {
+  testWidgets('authentication choices remain visible', (tester) async {
     await tester.pumpWidget(const TickerlessApp());
 
-    expect(find.bySemanticsLabel('Continue with Apple'), findsOneWidget);
+    expect(find.bySemanticsLabel('Continue with Apple'), findsNothing);
     expect(find.bySemanticsLabel('Continue with Google'), findsOneWidget);
     expect(find.bySemanticsLabel('Continue with Email'), findsOneWidget);
-
-    await tester.tap(find.bySemanticsLabel('Continue with Google'));
-    await tester.pumpAndSettle();
-    expect(find.text('Your World'), findsOneWidget);
   });
 
   testWidgets('search journey reaches a Base Sepolia ownership confirmation', (

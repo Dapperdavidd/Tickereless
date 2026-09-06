@@ -41,4 +41,21 @@ void main() {
     );
     expect(matches, isEmpty);
   });
+
+  test('Google login exchanges an ID token for a backend session', () async {
+    final api = TickerlessApi(
+      client: MockClient((request) async {
+        expect(request.url.path, '/v1/auth/google');
+        expect(jsonDecode(request.body), {'id_token': 'signed-google-token'});
+        return http.Response(
+          '{"access_token":"tickerless-session","token_type":"Bearer","expires_in":2592000,"user":{"id":"00000000-0000-0000-0000-000000000001","email":"owner@example.com","wallet_address":null}}',
+          200,
+        );
+      }),
+    );
+
+    final session = await api.googleLogin('signed-google-token');
+    expect(session.accessToken, 'tickerless-session');
+    expect(session.email, 'owner@example.com');
+  });
 }
