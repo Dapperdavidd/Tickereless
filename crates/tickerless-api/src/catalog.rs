@@ -151,6 +151,10 @@ fn seed_companies() -> Vec<Company> {
                 "Beats",
                 "Apple TV",
                 "Apple Music",
+                "Apple Intelligence",
+                "Apple Pencil",
+                "HomePod",
+                "iMac",
             ]
             .into_iter()
             .map(str::to_owned)
@@ -178,6 +182,8 @@ fn seed_companies() -> Vec<Company> {
                 "Oculus",
                 "Horizon",
                 "Ray-Ban Meta",
+                "Meta Quest",
+                "Meta AI",
                 "company behind Instagram",
             ]
             .into_iter()
@@ -209,6 +215,10 @@ fn seed_companies() -> Vec<Company> {
                 "Google Photos",
                 "Nest",
                 "Chromebook",
+                "Google Pixel",
+                "Pixel Watch",
+                "Pixel Buds",
+                "Google Play",
                 "company behind YouTube",
             ]
             .into_iter()
@@ -241,6 +251,10 @@ fn seed_companies() -> Vec<Company> {
                 "NVIDIA Shield",
                 "Jetson",
                 "G-SYNC",
+                "GeForce RTX",
+                "GeForce GTX",
+                "GeForce NOW",
+                "Grace Hopper",
             ]
             .into_iter()
             .map(str::to_owned)

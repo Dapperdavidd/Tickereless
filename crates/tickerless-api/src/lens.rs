@@ -7,6 +7,41 @@ const MAX_TEXT_CHARS: usize = 10_000;
 const MAX_LABELS: usize = 50;
 const MAX_LABEL_CHARS: usize = 100;
 
+const PRODUCT_HINTS: &[(&[&str], &str)] = &[
+    (
+        &["cellular telephone", "mobile phone", "smartphone"],
+        "iPhone",
+    ),
+    (&["laptop computer", "notebook computer"], "MacBook"),
+    (&["earbud", "wireless earphone"], "AirPods"),
+    (&["smartwatch", "watch computer"], "Apple Watch"),
+    (
+        &[
+            "head mounted display",
+            "virtual reality headset",
+            "vr headset",
+        ],
+        "Meta Quest",
+    ),
+    (
+        &["social networking", "social media app"],
+        "Instagram Facebook",
+    ),
+    (
+        &[
+            "graphics card",
+            "graphics processing unit",
+            "gpu",
+            "video card",
+        ],
+        "GeForce RTX",
+    ),
+    (&["ai accelerator", "compute accelerator"], "NVIDIA CUDA"),
+    (&["search engine", "web search"], "Google"),
+    (&["video sharing", "video platform"], "YouTube"),
+    (&["android phone", "pixel phone"], "Google Pixel"),
+];
+
 #[derive(Debug)]
 pub enum LensError {
     EmptyInput,
@@ -51,11 +86,30 @@ pub fn resolve<'a>(
         return Err(LensError::EmptyInput);
     }
 
-    let mut matches = catalog.search(&signals.join(" ")).matches;
+    let normalized_signals = signals.join(" ").to_ascii_lowercase().replace('-', " ");
+    let inferred: Vec<_> = PRODUCT_HINTS
+        .iter()
+        .filter(|(labels, _)| {
+            labels
+                .iter()
+                .any(|label| contains_phrase(&normalized_signals, label))
+        })
+        .map(|(_, company_hint)| *company_hint)
+        .collect();
+    let query = if inferred.is_empty() {
+        signals.join(" ")
+    } else {
+        format!("{} {}", signals.join(" "), inferred.join(" "))
+    };
+    let mut matches = catalog.search(&query).matches;
     for (index, item) in matches.iter_mut().enumerate() {
         item.role = Some(if index == 0 { "primary" } else { "mentioned" });
     }
     Ok(LensResolution { signals, matches })
+}
+
+fn contains_phrase(haystack: &str, needle: &str) -> bool {
+    format!(" {haystack} ").contains(&format!(" {needle} "))
 }
 
 #[cfg(test)]
@@ -98,6 +152,41 @@ mod tests {
             .expect("valid lens input");
             assert_eq!(result.matches[0].company.slug, expected);
         }
+    }
+
+    #[test]
+    fn resolves_camera_classification_labels_for_all_four_companies() {
+        let catalog = CompanyCatalog::seeded();
+        for (label, expected) in [
+            ("cellular telephone, mobile phone", "apple"),
+            ("virtual-reality headset", "meta"),
+            ("graphics processing unit", "nvidia"),
+            ("Android phone", "alphabet"),
+        ] {
+            let result = resolve(
+                &catalog,
+                LensRequest {
+                    text: None,
+                    labels: vec![label.to_owned()],
+                },
+            )
+            .expect("valid classification label");
+            assert_eq!(result.matches[0].company.slug, expected, "label: {label}");
+        }
+    }
+
+    #[test]
+    fn does_not_infer_a_company_from_unrelated_objects() {
+        let catalog = CompanyCatalog::seeded();
+        let result = resolve(
+            &catalog,
+            LensRequest {
+                text: None,
+                labels: vec!["coffee mug".to_owned(), "wooden table".to_owned()],
+            },
+        )
+        .expect("valid classification labels");
+        assert!(result.matches.is_empty());
     }
 
     #[test]
