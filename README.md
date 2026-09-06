@@ -41,6 +41,14 @@ changing source code:
 flutter run --dart-define=TICKERLESS_API_URL=http://10.0.2.2:8080
 ```
 
+For a physical iPhone or Android phone, put the phone and Mac on the same Wi-Fi,
+run the API with `TICKERLESS_API_HOST=0.0.0.0`, then use the helper that detects
+the Mac's Wi-Fi address and configures the app automatically:
+
+```shell
+./scripts/run-device-demo.sh
+```
+
 Cleartext HTTP is allowed only in Android debug builds; release builds retain
 the platform's secure-network policy. iOS permits local-network development.
 

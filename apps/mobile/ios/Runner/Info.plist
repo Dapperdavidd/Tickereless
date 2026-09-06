@@ -4,6 +4,8 @@
 <dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Tickerless uses the camera to recognize products and companies.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Tickerless connects to the development API on your local network.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsLocalNetworking</key>
