@@ -4,6 +4,7 @@ mod auth;
 pub mod catalog;
 pub mod chain;
 pub mod database;
+pub mod google;
 mod lens;
 mod link;
 mod models;
@@ -12,8 +13,8 @@ use actix_web::{HttpRequest, HttpResponse, Responder, error, error::JsonPayloadE
 use catalog::CompanyCatalog;
 use models::{
     ApiError, AuthResponse, CreateDiscoveryRequest, DiscoveryHistoryQuery, EmailCredentials,
-    HealthResponse, LensRequest, LinkRequest, OwnershipQuote, OwnershipQuoteQuery, SearchRequest,
-    SubmitTransactionRequest, WorldQuery,
+    GoogleCredential, HealthResponse, LensRequest, LinkRequest, OwnershipQuote,
+    OwnershipQuoteQuery, SearchRequest, SubmitTransactionRequest, WorldQuery,
 };
 use sqlx::PgPool;
 
@@ -134,6 +135,53 @@ async fn login_email(
     }
 }
 
+async fn login_google(
+    state: web::Data<AppState>,
+    body: web::Json<GoogleCredential>,
+) -> impl Responder {
+    let Some(verifier) = state.google.as_ref() else {
+        return HttpResponse::ServiceUnavailable().json(ApiError::new(
+            "google_auth_unconfigured",
+            "Google authentication is not configured",
+        ));
+    };
+    let identity = match verifier.verify(body.id_token.trim()).await {
+        Ok(identity) => identity,
+        Err(google::VerifyError::Invalid) => {
+            return HttpResponse::Unauthorized().json(ApiError::new(
+                "invalid_google_token",
+                "Google identity token is invalid",
+            ));
+        }
+        Err(google::VerifyError::Unavailable) => {
+            return HttpResponse::BadGateway().json(ApiError::new(
+                "google_unavailable",
+                "Google identity verification is temporarily unavailable",
+            ));
+        }
+    };
+    let user = match database::google_user(&state.pool, &identity.subject, &identity.email).await {
+        Ok(user) => user,
+        Err(database::GoogleUserError::EmailExists) => {
+            return HttpResponse::Conflict().json(ApiError::new(
+                "email_exists",
+                "sign in with email before linking this Google account",
+            ));
+        }
+        Err(database::GoogleUserError::Database(error)) => {
+            tracing::error!(%error, "failed to save Google identity");
+            return HttpResponse::InternalServerError().json(ApiError::new(
+                "database_error",
+                "could not sign in with Google",
+            ));
+        }
+    };
+    match issue_session(&state, user).await {
+        Ok(response) => HttpResponse::Ok().json(response),
+        Err(response) => response,
+    }
+}
+
 fn request_token(request: &HttpRequest) -> Option<&str> {
     request
         .headers()
@@ -190,6 +238,7 @@ pub struct AppState {
     catalog: CompanyCatalog,
     pool: PgPool,
     chain: chain::ChainClient,
+    google: Option<google::GoogleVerifier>,
 }
 
 impl AppState {
@@ -198,7 +247,13 @@ impl AppState {
             catalog,
             pool,
             chain,
+            google: None,
         }
+    }
+
+    pub fn with_google(mut self, google: Option<google::GoogleVerifier>) -> Self {
+        self.google = google;
+        self
     }
 }
 
@@ -546,6 +601,7 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
             web::scope("/v1")
                 .route("/auth/email/register", web::post().to(register_email))
                 .route("/auth/email/login", web::post().to(login_email))
+                .route("/auth/google", web::post().to(login_google))
                 .route("/auth/me", web::get().to(current_user))
                 .route("/auth/logout", web::post().to(logout))
                 .route("/resolve/search", web::post().to(resolve_search))
@@ -617,6 +673,24 @@ mod tests {
             .set_json(serde_json::json!({"query": "  "}))
             .to_request();
         assert_eq!(test::call_service(&app, request).await.status(), 400);
+    }
+
+    #[actix_web::test]
+    async fn google_auth_fails_closed_when_unconfigured() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/auth/google")
+            .set_json(serde_json::json!({"id_token": "not-a-token"}))
+            .to_request();
+        let response = test::call_service(&app, request).await;
+        assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
+        let body: serde_json::Value = test::read_body_json(response).await;
+        assert_eq!(body["code"], "google_auth_unconfigured");
     }
 
     #[actix_web::test]

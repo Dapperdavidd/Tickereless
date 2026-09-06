@@ -111,8 +111,14 @@ Email addresses are normalized and unique. Passwords are stored as salted
 PBKDF2-HMAC-SHA256 hashes, never plaintext. Registration and login return a
 random 30-day bearer token; only its SHA-256 hash is stored. Use that token with
 `GET /v1/auth/me`, and revoke it with `POST /v1/auth/logout`. Passwords must be
-10–128 characters. Google authentication is intentionally left as the only
-provider requiring external credentials.
+10–128 characters.
+
+To enable Google sign-in, set `GOOGLE_OAUTH_CLIENT_IDS` to the OAuth client ID
+that issues the mobile ID token, or a comma-separated allowlist when iOS and
+Android use different client IDs. Send the Google ID token to
+`POST /v1/auth/google` as `{"id_token":"..."}`. The API validates the RS256
+signature with Google's rotating public keys plus the issuer, audience, expiry,
+verified-email, and stable subject claims before creating a Tickerless session.
 
 Resolve a real-world query:
 

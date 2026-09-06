@@ -18,6 +18,67 @@ pub enum RegisterUserError {
     Database(sqlx::Error),
 }
 
+#[derive(Debug)]
+pub enum GoogleUserError {
+    EmailExists,
+    Database(sqlx::Error),
+}
+
+pub async fn google_user(
+    pool: &PgPool,
+    subject: &str,
+    email: &str,
+) -> Result<AuthUser, GoogleUserError> {
+    let mut transaction = pool.begin().await.map_err(GoogleUserError::Database)?;
+    if let Some(user) = sqlx::query_as::<_, AuthUser>(
+        "SELECT u.id, u.email, u.wallet_address FROM auth_identities i \
+         JOIN users u ON u.id = i.user_id WHERE i.provider = 'google' \
+         AND i.provider_subject = $1",
+    )
+    .bind(subject)
+    .fetch_optional(&mut *transaction)
+    .await
+    .map_err(GoogleUserError::Database)?
+    {
+        transaction
+            .commit()
+            .await
+            .map_err(GoogleUserError::Database)?;
+        return Ok(user);
+    }
+    if sqlx::query_scalar::<_, bool>(
+        "SELECT EXISTS(SELECT 1 FROM users WHERE lower(email) = lower($1))",
+    )
+    .bind(email)
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(GoogleUserError::Database)?
+    {
+        return Err(GoogleUserError::EmailExists);
+    }
+    let user = sqlx::query_as::<_, AuthUser>(
+        "INSERT INTO users (email) VALUES ($1) RETURNING id, email, wallet_address",
+    )
+    .bind(email)
+    .fetch_one(&mut *transaction)
+    .await
+    .map_err(GoogleUserError::Database)?;
+    sqlx::query(
+        "INSERT INTO auth_identities (user_id, provider, provider_subject) \
+         VALUES ($1, 'google', $2)",
+    )
+    .bind(user.id)
+    .bind(subject)
+    .execute(&mut *transaction)
+    .await
+    .map_err(GoogleUserError::Database)?;
+    transaction
+        .commit()
+        .await
+        .map_err(GoogleUserError::Database)?;
+    Ok(user)
+}
+
 pub async fn register_email_user(
     pool: &PgPool,
     email: &str,
@@ -483,7 +544,7 @@ mod tests {
 
     use super::{
         MIGRATOR, authenticated_user, create_discovery, create_session, discovery_history,
-        email_user_credentials, load_catalog, record_transaction, register_email_user,
+        email_user_credentials, google_user, load_catalog, record_transaction, register_email_user,
         revoke_session, world,
     };
     use crate::{
@@ -597,5 +658,26 @@ mod tests {
                 .expect("revoked lookup should work")
                 .is_none()
         );
+    }
+
+    #[sqlx::test(migrator = "MIGRATOR")]
+    async fn google_identity_is_stable_and_does_not_take_over_email_accounts(pool: PgPool) {
+        let google = google_user(&pool, "google-subject-1", "google@example.com")
+            .await
+            .expect("Google account should be created");
+        let returning = google_user(&pool, "google-subject-1", "changed@example.com")
+            .await
+            .expect("Google subject should resolve consistently");
+        assert_eq!(google.id, returning.id);
+        assert_eq!(returning.email, "google@example.com");
+
+        let hash = crate::auth::hash_password("a secure demo password");
+        register_email_user(&pool, "existing@example.com", &hash)
+            .await
+            .expect("email user should register");
+        assert!(matches!(
+            google_user(&pool, "google-subject-2", "existing@example.com").await,
+            Err(super::GoogleUserError::EmailExists)
+        ));
     }
 }

@@ -1,7 +1,9 @@
 use std::{env, io};
 
 use actix_web::{App, HttpServer};
-use tickerless_api::{AppState, chain::ChainClient, configure_app, database};
+use tickerless_api::{
+    AppState, chain::ChainClient, configure_app, database, google::GoogleVerifier,
+};
 use tracing::info;
 use tracing_subscriber::EnvFilter;
 
@@ -37,10 +39,13 @@ async fn main() -> io::Result<()> {
     let rpc_url = env::var("BASE_SEPOLIA_RPC_URL")
         .map_err(|_| io::Error::other("BASE_SEPOLIA_RPC_URL must be configured"))?;
     let chain = ChainClient::new(&rpc_url).map_err(io::Error::other)?;
+    let google = env::var("GOOGLE_OAUTH_CLIENT_IDS")
+        .ok()
+        .and_then(|value| GoogleVerifier::new(value.split(',').map(str::to_owned).collect()));
 
     info!(%host, %port, "starting Tickerless API");
 
-    let state = actix_web::web::Data::new(AppState::new(catalog, pool, chain));
+    let state = actix_web::web::Data::new(AppState::new(catalog, pool, chain).with_google(google));
 
     HttpServer::new(move || App::new().app_data(state.clone()).configure(configure_app))
         .bind((host, port))?

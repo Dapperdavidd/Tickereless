@@ -11,6 +11,12 @@ pub struct EmailCredentials {
     pub password: String,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct GoogleCredential {
+    pub id_token: String,
+}
+
 #[derive(Serialize)]
 pub struct AuthResponse {
     pub access_token: String,
