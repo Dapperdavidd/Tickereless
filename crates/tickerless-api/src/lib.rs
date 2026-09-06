@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+mod auth;
 pub mod catalog;
 pub mod chain;
 pub mod database;
@@ -7,16 +8,183 @@ mod lens;
 mod link;
 mod models;
 
-use actix_web::{HttpResponse, Responder, error, error::JsonPayloadError, web};
+use actix_web::{HttpRequest, HttpResponse, Responder, error, error::JsonPayloadError, web};
 use catalog::CompanyCatalog;
 use models::{
-    ApiError, CreateDiscoveryRequest, DiscoveryHistoryQuery, HealthResponse, LensRequest,
-    LinkRequest, OwnershipQuote, OwnershipQuoteQuery, SearchRequest, SubmitTransactionRequest,
-    WorldQuery,
+    ApiError, AuthResponse, CreateDiscoveryRequest, DiscoveryHistoryQuery, EmailCredentials,
+    HealthResponse, LensRequest, LinkRequest, OwnershipQuote, OwnershipQuoteQuery, SearchRequest,
+    SubmitTransactionRequest, WorldQuery,
 };
 use sqlx::PgPool;
 
 const JSON_BODY_LIMIT: usize = 64 * 1024;
+
+async fn issue_session(
+    state: &AppState,
+    user: models::AuthUser,
+) -> Result<AuthResponse, HttpResponse> {
+    let (token, token_hash) = auth::new_session_token();
+    database::create_session(&state.pool, user.id, &token_hash)
+        .await
+        .map_err(|error| {
+            tracing::error!(%error, "failed to create auth session");
+            HttpResponse::InternalServerError()
+                .json(ApiError::new("database_error", "could not create session"))
+        })?;
+    Ok(AuthResponse {
+        access_token: token,
+        token_type: "Bearer",
+        expires_in: auth::SESSION_TTL_DAYS * 24 * 60 * 60,
+        user,
+    })
+}
+
+async fn register_email(
+    state: web::Data<AppState>,
+    body: web::Json<EmailCredentials>,
+) -> impl Responder {
+    let Some(email) = auth::normalize_email(&body.email) else {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_email",
+            "a valid email address is required",
+        ));
+    };
+    if !auth::valid_password(&body.password) {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_password",
+            "password must be between 10 and 128 characters",
+        ));
+    }
+    let password = body.password.clone();
+    let password_hash = match web::block(move || auth::hash_password(&password)).await {
+        Ok(hash) => hash,
+        Err(error) => {
+            tracing::error!(%error, "password hashing worker failed");
+            return HttpResponse::InternalServerError()
+                .json(ApiError::new("auth_error", "could not create account"));
+        }
+    };
+    let user = match database::register_email_user(&state.pool, &email, &password_hash).await {
+        Ok(user) => user,
+        Err(database::RegisterUserError::EmailExists) => {
+            return HttpResponse::Conflict().json(ApiError::new(
+                "email_exists",
+                "an account already exists for this email",
+            ));
+        }
+        Err(database::RegisterUserError::Database(error)) => {
+            tracing::error!(%error, "failed to register user");
+            return HttpResponse::InternalServerError()
+                .json(ApiError::new("database_error", "could not create account"));
+        }
+    };
+    match issue_session(&state, user).await {
+        Ok(response) => HttpResponse::Created().json(response),
+        Err(response) => response,
+    }
+}
+
+async fn login_email(
+    state: web::Data<AppState>,
+    body: web::Json<EmailCredentials>,
+) -> impl Responder {
+    let Some(email) = auth::normalize_email(&body.email) else {
+        return HttpResponse::Unauthorized().json(ApiError::new(
+            "invalid_credentials",
+            "email or password is incorrect",
+        ));
+    };
+    let credentials = match database::email_user_credentials(&state.pool, &email).await {
+        Ok(value) => value,
+        Err(error) => {
+            tracing::error!(%error, "failed to load auth user");
+            return HttpResponse::InternalServerError()
+                .json(ApiError::new("database_error", "could not sign in"));
+        }
+    };
+    let password = body.password.clone();
+    let verification_hash = credentials.as_ref().map_or_else(
+        || auth::dummy_password_hash().to_owned(),
+        |(_, hash)| hash.clone(),
+    );
+    let verified =
+        match web::block(move || auth::verify_password(&password, &verification_hash)).await {
+            Ok(verified) => verified,
+            Err(error) => {
+                tracing::error!(%error, "password verification worker failed");
+                return HttpResponse::InternalServerError()
+                    .json(ApiError::new("auth_error", "could not sign in"));
+            }
+        };
+    let Some((user, _)) = credentials else {
+        return HttpResponse::Unauthorized().json(ApiError::new(
+            "invalid_credentials",
+            "email or password is incorrect",
+        ));
+    };
+    if !verified {
+        return HttpResponse::Unauthorized().json(ApiError::new(
+            "invalid_credentials",
+            "email or password is incorrect",
+        ));
+    }
+    match issue_session(&state, user).await {
+        Ok(response) => HttpResponse::Ok().json(response),
+        Err(response) => response,
+    }
+}
+
+fn request_token(request: &HttpRequest) -> Option<&str> {
+    request
+        .headers()
+        .get("authorization")
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| auth::bearer_token(Some(value)))
+}
+
+async fn current_user(state: web::Data<AppState>, request: HttpRequest) -> impl Responder {
+    let Some(token) = request_token(&request) else {
+        return HttpResponse::Unauthorized().json(ApiError::new(
+            "unauthorized",
+            "a valid bearer token is required",
+        ));
+    };
+    match database::authenticated_user(&state.pool, &auth::hash_session_token(token)).await {
+        Ok(Some(user)) => HttpResponse::Ok().json(user),
+        Ok(None) => HttpResponse::Unauthorized().json(ApiError::new(
+            "unauthorized",
+            "session is invalid or expired",
+        )),
+        Err(error) => {
+            tracing::error!(%error, "failed to authenticate session");
+            HttpResponse::InternalServerError().json(ApiError::new(
+                "database_error",
+                "could not authenticate session",
+            ))
+        }
+    }
+}
+
+async fn logout(state: web::Data<AppState>, request: HttpRequest) -> impl Responder {
+    let Some(token) = request_token(&request) else {
+        return HttpResponse::Unauthorized().json(ApiError::new(
+            "unauthorized",
+            "a valid bearer token is required",
+        ));
+    };
+    match database::revoke_session(&state.pool, &auth::hash_session_token(token)).await {
+        Ok(true) => HttpResponse::NoContent().finish(),
+        Ok(false) => HttpResponse::Unauthorized().json(ApiError::new(
+            "unauthorized",
+            "session is invalid or expired",
+        )),
+        Err(error) => {
+            tracing::error!(%error, "failed to revoke session");
+            HttpResponse::InternalServerError()
+                .json(ApiError::new("database_error", "could not end session"))
+        }
+    }
+}
 
 pub struct AppState {
     catalog: CompanyCatalog,
@@ -376,6 +544,10 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
         .route("/ready", web::get().to(readiness))
         .service(
             web::scope("/v1")
+                .route("/auth/email/register", web::post().to(register_email))
+                .route("/auth/email/login", web::post().to(login_email))
+                .route("/auth/me", web::get().to(current_user))
+                .route("/auth/logout", web::post().to(logout))
                 .route("/resolve/search", web::post().to(resolve_search))
                 .route("/resolve/link", web::post().to(resolve_link))
                 .route("/resolve/image", web::post().to(resolve_lens))

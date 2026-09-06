@@ -4,6 +4,28 @@ use serde::{Deserialize, Serialize};
 use sqlx::FromRow;
 use uuid::Uuid;
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EmailCredentials {
+    pub email: String,
+    pub password: String,
+}
+
+#[derive(Serialize)]
+pub struct AuthResponse {
+    pub access_token: String,
+    pub token_type: &'static str,
+    pub expires_in: i64,
+    pub user: AuthUser,
+}
+
+#[derive(Serialize, FromRow)]
+pub struct AuthUser {
+    pub id: Uuid,
+    pub email: String,
+    pub wallet_address: Option<String>,
+}
+
 #[derive(Serialize)]
 pub struct HealthResponse {
     pub status: &'static str,

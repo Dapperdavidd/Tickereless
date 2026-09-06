@@ -3,13 +3,123 @@ use std::collections::HashMap;
 use sqlx::{FromRow, PgPool, postgres::PgPoolOptions};
 
 use crate::{
+    auth,
     catalog::CompanyCatalog,
     chain::VerifiedPurchase,
     models::{
-        Company, CreateDiscoveryRequest, Discovery, SubmitTransactionRequest, TokenizedAsset,
-        TransactionRecord, WorldDiscoveryContext, WorldPosition, WorldSummary,
+        AuthUser, Company, CreateDiscoveryRequest, Discovery, SubmitTransactionRequest,
+        TokenizedAsset, TransactionRecord, WorldDiscoveryContext, WorldPosition, WorldSummary,
     },
 };
+
+#[derive(Debug)]
+pub enum RegisterUserError {
+    EmailExists,
+    Database(sqlx::Error),
+}
+
+pub async fn register_email_user(
+    pool: &PgPool,
+    email: &str,
+    password_hash: &str,
+) -> Result<AuthUser, RegisterUserError> {
+    sqlx::query_as::<_, AuthUser>(
+        "INSERT INTO users (email, password_hash) VALUES ($1, $2) \
+         RETURNING id, email, wallet_address",
+    )
+    .bind(email)
+    .bind(password_hash)
+    .fetch_one(pool)
+    .await
+    .map_err(|error| {
+        if error
+            .as_database_error()
+            .and_then(|value| value.constraint())
+            == Some("users_email_unique_idx")
+        {
+            RegisterUserError::EmailExists
+        } else {
+            RegisterUserError::Database(error)
+        }
+    })
+}
+
+pub async fn email_user_credentials(
+    pool: &PgPool,
+    email: &str,
+) -> Result<Option<(AuthUser, String)>, sqlx::Error> {
+    sqlx::query_as::<_, (uuid::Uuid, String, Option<String>, String)>(
+        "SELECT id, email, wallet_address, password_hash FROM users \
+         WHERE lower(email) = lower($1) AND password_hash IS NOT NULL",
+    )
+    .bind(email)
+    .fetch_optional(pool)
+    .await
+    .map(|row| {
+        row.map(|(id, email, wallet_address, password_hash)| {
+            (
+                AuthUser {
+                    id,
+                    email,
+                    wallet_address,
+                },
+                password_hash,
+            )
+        })
+    })
+}
+
+pub async fn create_session(
+    pool: &PgPool,
+    user_id: uuid::Uuid,
+    token_hash: &[u8],
+) -> Result<(), sqlx::Error> {
+    sqlx::query(
+        "INSERT INTO auth_sessions (user_id, token_hash, expires_at) \
+         VALUES ($1, $2, now() + make_interval(days => $3::int))",
+    )
+    .bind(user_id)
+    .bind(token_hash)
+    .bind(auth::SESSION_TTL_DAYS as i32)
+    .execute(pool)
+    .await?;
+    Ok(())
+}
+
+pub async fn authenticated_user(
+    pool: &PgPool,
+    token_hash: &[u8],
+) -> Result<Option<AuthUser>, sqlx::Error> {
+    let mut transaction = pool.begin().await?;
+    let user = sqlx::query_as::<_, AuthUser>(
+        "SELECT u.id, u.email, u.wallet_address FROM auth_sessions s \
+         JOIN users u ON u.id = s.user_id WHERE s.token_hash = $1 \
+         AND s.revoked_at IS NULL AND s.expires_at > now() AND u.email IS NOT NULL",
+    )
+    .bind(token_hash)
+    .fetch_optional(&mut *transaction)
+    .await?;
+    if user.is_some() {
+        sqlx::query("UPDATE auth_sessions SET last_used_at = now() WHERE token_hash = $1")
+            .bind(token_hash)
+            .execute(&mut *transaction)
+            .await?;
+    }
+    transaction.commit().await?;
+    Ok(user)
+}
+
+pub async fn revoke_session(pool: &PgPool, token_hash: &[u8]) -> Result<bool, sqlx::Error> {
+    Ok(sqlx::query(
+        "UPDATE auth_sessions SET revoked_at = now() WHERE token_hash = $1 \
+         AND revoked_at IS NULL AND expires_at > now()",
+    )
+    .bind(token_hash)
+    .execute(pool)
+    .await?
+    .rows_affected()
+        == 1)
+}
 
 static MIGRATOR: sqlx::migrate::Migrator = sqlx::migrate!("../../migrations");
 
@@ -372,7 +482,9 @@ mod tests {
     use uuid::Uuid;
 
     use super::{
-        MIGRATOR, create_discovery, discovery_history, load_catalog, record_transaction, world,
+        MIGRATOR, authenticated_user, create_discovery, create_session, discovery_history,
+        email_user_credentials, load_catalog, record_transaction, register_email_user,
+        revoke_session, world,
     };
     use crate::{
         chain::VerifiedPurchase,
@@ -444,5 +556,46 @@ mod tests {
         assert_eq!(summary.discovery_count, 1);
         assert_eq!(summary.companies[0].token_amount, Decimal::new(5, 2));
         assert_eq!(summary.companies[0].discoveries[0].method, "lens");
+    }
+
+    #[sqlx::test(migrator = "MIGRATOR")]
+    async fn email_account_session_lifecycle(pool: PgPool) {
+        let password_hash = crate::auth::hash_password("a secure demo password");
+        let user = register_email_user(&pool, "owner@example.com", &password_hash)
+            .await
+            .expect("user should register");
+        assert_eq!(user.email, "owner@example.com");
+        assert!(user.wallet_address.is_none());
+
+        let (_, stored_hash) = email_user_credentials(&pool, "OWNER@example.com")
+            .await
+            .expect("lookup should work")
+            .expect("account should exist");
+        assert!(crate::auth::verify_password(
+            "a secure demo password",
+            &stored_hash
+        ));
+
+        let (_, token_hash) = crate::auth::new_session_token();
+        create_session(&pool, user.id, &token_hash)
+            .await
+            .expect("session should be created");
+        assert!(
+            authenticated_user(&pool, &token_hash)
+                .await
+                .expect("session lookup should work")
+                .is_some()
+        );
+        assert!(
+            revoke_session(&pool, &token_hash)
+                .await
+                .expect("session should revoke")
+        );
+        assert!(
+            authenticated_user(&pool, &token_hash)
+                .await
+                .expect("revoked lookup should work")
+                .is_none()
+        );
     }
 }

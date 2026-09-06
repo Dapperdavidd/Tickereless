@@ -91,6 +91,21 @@ Readiness includes a live database check:
 curl http://127.0.0.1:8080/ready
 ```
 
+Create an email account and session:
+
+```shell
+curl -X POST http://127.0.0.1:8080/v1/auth/email/register \
+  -H 'content-type: application/json' \
+  -d '{"email":"demo@example.com","password":"a-secure-demo-password"}'
+```
+
+Email addresses are normalized and unique. Passwords are stored as salted
+PBKDF2-HMAC-SHA256 hashes, never plaintext. Registration and login return a
+random 30-day bearer token; only its SHA-256 hash is stored. Use that token with
+`GET /v1/auth/me`, and revoke it with `POST /v1/auth/logout`. Passwords must be
+10–128 characters. Google authentication is intentionally left as the only
+provider requiring external credentials.
+
 Resolve a real-world query:
 
 ```shell
