@@ -1,0 +1,25 @@
+{
+  "network": "Base Sepolia",
+  "chainId": 84532,
+  "deployedAt": "2026-09-06T15:04:31Z",
+  "deployer": "0x41e4aa93ee4569cc0511e20d1d0f0bad19e97335",
+  "explorer": "https://sepolia.basescan.org",
+  "contracts": {
+    "paymentToken": "0xcaf9abb602b54a6e66d12a58671b1526d6f13b42",
+    "market": "0xe23b7a58bcf6b3e3f97e1120f2f473251596bfb7",
+    "assets": {
+      "tAAPLc": "0xecb227cccce78c2452188e656cde26225fcbcd39",
+      "tNVDAc": "0xf1c8912f560b89779f00a59bcb5a43b5001f8fb2",
+      "tMETAc": "0x1a8babbe375b00d82281b4a5323b7587df0ceee6",
+      "tGOOGLc": "0xba66850b6bb6ad7460db33ef057f0ce6c022df89"
+    }
+  },
+  "deploymentTransactions": {
+    "paymentToken": "0xbdf4e42884cec32bcb9e59d0557b9c76f28dd586a3ba1e3a0f1ad24c891a1b87",
+    "tAAPLc": "0x8b007b0ce27e8f79f64327b249bd93a2f6faf010eb34d711e343fce652b20cca",
+    "tNVDAc": "0xe9b0a70e6dadd04d5466c2dac3e9eec196e181a04fd2fdbdba4c33d1262fe23c",
+    "tMETAc": "0x21556194d886024953c14c94a84761f7240b22a223701e25d718abb665daf95e",
+    "tGOOGLc": "0xadedf7a05382924e6659c4313d9d20164f7766833724bf73851b78ad065a08bb",
+    "market": "0x44444b171b3225aa807daa11202636a15f17cff91edbc7d2201ed8146cb0937f"
+  }
+}

@@ -242,6 +242,11 @@ forge test
 forge lint
 ```
 
+The current demo deployment is live on Base Sepolia. Its public addresses and
+deployment transaction hashes are tracked in `deployments/base-sepolia.json`.
+Each wallet can call `claim()` on the listed payment token once to receive
+1,000 tUSDC for demo purchases; this requires only Base Sepolia gas.
+
 Deploy to a configured development RPC:
 
 ```shell
