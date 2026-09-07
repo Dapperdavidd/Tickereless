@@ -42,12 +42,16 @@ flutter run --dart-define=TICKERLESS_API_URL=http://10.0.2.2:8080
 ```
 
 For a physical iPhone or Android phone, put the phone and Mac on the same Wi-Fi,
-run the API with `TICKERLESS_API_HOST=0.0.0.0`, then use the helper that detects
-the Mac's Wi-Fi address and configures the app automatically:
+then use the helper. It starts PostgreSQL (Homebrew or Docker) and the API, detects the Mac's local
+address, waits for backend readiness, and configures the app automatically:
 
 ```shell
 ./scripts/run-device-demo.sh
 ```
+
+In Zed, the same complete flow is available as the `Run Tickerless on iPhone`
+task. Do not use a plain `flutter run` for a physical phone because its localhost
+belongs to the phone rather than the Mac.
 
 Cleartext HTTP is allowed only in Android debug builds; release builds retain
 the platform's secure-network policy. iOS permits local-network development.
