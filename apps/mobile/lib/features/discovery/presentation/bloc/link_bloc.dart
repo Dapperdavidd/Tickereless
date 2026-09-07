@@ -13,7 +13,10 @@ class LinkBloc extends Bloc<LinkEvent, LinkState> {
 
   final ResolveLinkUseCase _resolveLink;
 
-  Future<void> _onSubmitted(LinkSubmitted event, Emitter<LinkState> emit) async {
+  Future<void> _onSubmitted(
+    LinkSubmitted event,
+    Emitter<LinkState> emit,
+  ) async {
     final url = event.url.trim();
     if (url.isEmpty) return;
 

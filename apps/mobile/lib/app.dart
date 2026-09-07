@@ -50,6 +50,10 @@ class _TickerlessAppState extends State<TickerlessApp> {
         // Exposed to the profile screen, which reveals the key in a dialog
         // rather than holding it in any bloc state.
         RepositoryProvider.value(value: dependencies.revealPrivateKey),
+        // The passport builds its own bloc per company, so it reads these
+        // rather than receiving a bloc from up here.
+        RepositoryProvider.value(value: dependencies.getPriceSeries),
+        RepositoryProvider.value(value: dependencies.getCompanyNews),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -65,7 +69,8 @@ class _TickerlessAppState extends State<TickerlessApp> {
                 SearchBloc(searchCompanies: dependencies.searchCompanies),
           ),
           BlocProvider(
-            create: (context) => LinkBloc(resolveLink: dependencies.resolveLink),
+            create: (context) =>
+                LinkBloc(resolveLink: dependencies.resolveLink),
           ),
           BlocProvider(
             create: (context) => LensBloc(

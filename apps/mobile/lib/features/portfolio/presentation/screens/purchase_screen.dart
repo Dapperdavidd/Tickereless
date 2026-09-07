@@ -5,7 +5,7 @@ import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/core/widgets/flow_scaffold.dart';
-import 'package:tickerless/core/widgets/glass_card.dart';
+import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/core/widgets/summary_row.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_event.dart';
@@ -44,14 +44,17 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
             style: TextStyle(color: AppColors.muted),
           ),
           const SizedBox(height: 28),
-          GlassCard(
-            child: Row(
-              children: [
-                const Icon(Icons.travel_explore),
-                const SizedBox(width: 12),
-                Expanded(child: Text(widget.args.source)),
-              ],
-            ),
+          Row(
+            children: [
+              const Icon(Icons.travel_explore, size: 18, color: AppColors.blue),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.args.source,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 13),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 28),
           const Text('Amount', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -73,19 +76,16 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 .toList(),
           ),
           const SizedBox(height: 24),
-          GlassCard(
-            child: Column(
-              children: [
-                SummaryRow(
-                  label: 'You’ll receive',
-                  value: '${tokens.toStringAsFixed(4)} ${company.symbol}',
-                ),
-                const SizedBox(height: 14),
-                const SummaryRow(label: 'Network', value: 'Base Sepolia'),
-                const SizedBox(height: 14),
-                const SummaryRow(label: 'Asset type', value: 'Demo equity'),
-              ],
-            ),
+          HairlineList(
+            gap: 28,
+            children: [
+              SummaryRow(
+                label: 'You’ll receive',
+                value: '${tokens.toStringAsFixed(4)} ${company.symbol}',
+              ),
+              const SummaryRow(label: 'Network', value: 'Base Sepolia'),
+              const SummaryRow(label: 'Asset type', value: 'Demo equity'),
+            ],
           ),
           const SizedBox(height: 24),
           FilledButton(

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
-import 'package:tickerless/core/widgets/glass_card.dart';
 import 'package:tickerless/features/discovery/domain/entities/company_match.dart';
 import 'package:tickerless/features/discovery/presentation/widgets/company_avatar.dart';
 
@@ -16,43 +15,55 @@ class DetectedCompanyRow extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => GlassCard(
+  Widget build(BuildContext context) => GestureDetector(
     onTap: onTap,
+    behavior: HitTestBehavior.opaque,
     child: Row(
       children: [
-        CompanyAvatar(
-          company: match.company,
-          radius: 23,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        const SizedBox(width: 12),
+        CompanyAvatar(company: match.company, radius: 21),
+        const SizedBox(width: 13),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 match.company.name,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 15,
+                ),
               ),
+              const SizedBox(height: 2),
               Text(
                 match.reason,
-                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: AppColors.muted, fontSize: 11.5),
               ),
+              const SizedBox(height: 2),
               Text(
                 '${match.company.symbol} · Base Sepolia',
-                style: const TextStyle(color: AppColors.blue, fontSize: 11),
+                style: const TextStyle(color: AppColors.blue, fontSize: 11.5),
               ),
             ],
           ),
         ),
+        const SizedBox(width: 10),
         Text(
           '${(match.confidence * 100).round()}%',
           style: const TextStyle(
             color: AppColors.green,
             fontWeight: FontWeight.w700,
+            fontSize: 13,
           ),
         ),
-        const Icon(Icons.chevron_right),
+        const Icon(
+          Icons.chevron_right_rounded,
+          size: 18,
+          color: AppColors.muted,
+        ),
       ],
     ),
   );

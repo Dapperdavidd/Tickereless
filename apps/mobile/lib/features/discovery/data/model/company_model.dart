@@ -13,7 +13,8 @@ class CompanyModel extends Company {
 
   /// `json` is the resolver's `company` object; `asset` is the Base Sepolia
   /// listing, which the backend nests either alongside or inside it.
-  factory CompanyModel.fromJson(Map<String, dynamic> json, {
+  factory CompanyModel.fromJson(
+    Map<String, dynamic> json, {
     Map<String, dynamic>? asset,
   }) {
     final ticker = json['ticker'].toString();

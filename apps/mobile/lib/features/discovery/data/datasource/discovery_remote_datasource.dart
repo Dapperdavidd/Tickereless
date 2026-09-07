@@ -30,11 +30,10 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
 
   @override
   Future<List<CompanyMatchModel>> recognize(String text, List<String> labels) =>
-      _matches(
-        '/v1/resolve/image',
-        {'text': text, 'labels': labels},
-        fallbackError: 'Recognition failed',
-      );
+      _matches('/v1/resolve/image', {
+        'text': text,
+        'labels': labels,
+      }, fallbackError: 'Recognition failed');
 
   Future<List<CompanyMatchModel>> _matches(
     String path,
@@ -47,7 +46,9 @@ class DiscoveryRemoteDataSourceImpl implements DiscoveryRemoteDataSource {
       fallbackError: fallbackError,
     );
     return (decoded['matches'] as List<dynamic>? ?? const [])
-        .map((match) => CompanyMatchModel.fromJson(match as Map<String, dynamic>))
+        .map(
+          (match) => CompanyMatchModel.fromJson(match as Map<String, dynamic>),
+        )
         .toList();
   }
 }

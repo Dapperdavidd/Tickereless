@@ -8,6 +8,8 @@ class FlowScaffold extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) =>
-      Scaffold(appBar: AppBar(title: Text(title)), body: child);
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(title)),
+    body: child,
+  );
 }

@@ -7,5 +7,6 @@ class EnsureWalletUseCase {
 
   final WalletRepository _repository;
 
-  Future<WalletIdentity> call(String userId) => _repository.ensureWallet(userId);
+  Future<WalletIdentity> call(String userId) =>
+      _repository.ensureWallet(userId);
 }

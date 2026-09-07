@@ -115,12 +115,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           OnboardingStoryPage(
                             eyebrow: 'LOOK CLOSER',
                             title: 'The world is\nthe stock market.',
-                            body: 'Point at what you see.\nSearch what you’re curious about.\nOwn a piece of it.',
+                            body:
+                                'Point at what you see.\nSearch what you’re curious about.\nOwn a piece of it.',
                           ),
                           OnboardingStoryPage(
                             eyebrow: 'A MORE OPEN WORLD',
                             title: 'Same world.\nMore owners.',
-                            body: 'The things you notice every day\ncan become part of your world.',
+                            body:
+                                'The things you notice every day\ncan become part of your world.',
                           ),
                           OnboardingStoryPage(
                             eyebrow: 'DISCOVER → OWN',

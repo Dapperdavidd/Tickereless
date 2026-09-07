@@ -4,16 +4,46 @@ import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
-import 'package:tickerless/core/widgets/glass_card.dart';
-import 'package:tickerless/core/widgets/pill.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_state.dart';
+import 'package:tickerless/features/discovery/domain/entities/company.dart';
 import 'package:tickerless/features/discovery/presentation/brand_palette.dart';
 import 'package:tickerless/features/discovery/presentation/widgets/company_avatar.dart';
+import 'package:tickerless/features/market/domain/entities/news_article.dart';
+import 'package:tickerless/features/market/domain/usecases/get_company_news.dart';
+import 'package:tickerless/features/market/domain/usecases/get_price_series.dart';
+import 'package:tickerless/features/market/presentation/bloc/passport_bloc.dart';
+import 'package:tickerless/features/market/presentation/bloc/passport_event.dart';
+import 'package:tickerless/features/market/presentation/bloc/passport_state.dart';
+import 'package:tickerless/features/market/presentation/widgets/news_list.dart';
+import 'package:tickerless/features/market/presentation/widgets/price_chart.dart';
+import 'package:tickerless/features/market/presentation/widgets/range_selector.dart';
+import 'package:tickerless/features/market/presentation/widgets/stat_strip.dart';
 
 /// Everything known about one company, and the way to own a piece of it.
+///
+/// The page is a price, a chart and three facts — so it is laid out as those
+/// things, separated by hairlines. Wrapping each one in its own bordered card
+/// added six rectangles and no information.
 class PassportScreen extends StatelessWidget {
   const PassportScreen({required this.args, super.key});
+
+  final PassportArgs args;
+
+  @override
+  Widget build(BuildContext context) => BlocProvider(
+    create: (context) => PassportBloc(
+      getPriceSeries: context.read<GetPriceSeriesUseCase>(),
+      getCompanyNews: context.read<GetCompanyNewsUseCase>(),
+      ticker: args.company.ticker,
+      anchorPrice: args.company.price,
+    )..add(const PassportOpened()),
+    child: _PassportView(args: args),
+  );
+}
+
+class _PassportView extends StatelessWidget {
+  const _PassportView({required this.args});
 
   final PassportArgs args;
 
@@ -55,147 +85,315 @@ class PassportScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final company = args.company;
+    final brand = BrandPalette.colorFor(company.ticker);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Company Passport',
-          style: TextStyle(fontSize: 13, color: AppColors.muted),
+        titleSpacing: 0,
+        leading: IconButton(
+          onPressed: () => Navigator.of(context).pop(),
+          icon: const Icon(Icons.close_rounded),
+        ),
+        title: Row(
+          children: [
+            CompanyAvatar(company: company, radius: 14),
+            const SizedBox(width: 9),
+            Flexible(
+              child: Text(
+                company.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
         ),
         actions: [
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.ios_share_outlined),
+            icon: const Icon(Icons.ios_share_outlined, size: 21),
           ),
-          IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz)),
+          IconButton(
+            onPressed: () {},
+            icon: const Icon(Icons.more_vert_rounded, size: 21),
+          ),
         ],
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
-        children: [
-          Container(
-            height: 185,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  BrandPalette.colorFor(company.ticker).withValues(alpha: .18),
-                  AppColors.background,
+      body: BlocBuilder<PassportBloc, PassportState>(
+        builder: (context, state) => ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+              child: _PriceHeadline(company: company, state: state),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              height: 224,
+              child: state.series == null
+                  ? const Center(
+                      child: SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                    )
+                  : PriceChart(series: state.series!, color: brand),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: RangeSelector(
+                selected: state.range,
+                onSelected: (range) => context.read<PassportBloc>().add(
+                  PassportRangeSelected(range),
+                ),
+              ),
+            ),
+            if (state.series?.isDemo ?? false) ...[
+              const SizedBox(height: 10),
+              const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 20),
+                child: Text(
+                  'Demo series · not market data',
+                  style: TextStyle(color: AppColors.muted, fontSize: 11),
+                ),
+              ),
+            ],
+            const Divider(height: 30, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20),
+              child: StatStrip(
+                stats: [
+                  (label: 'Token', value: company.symbol),
+                  (label: 'Network', value: 'Base Sepolia'),
+                  (label: 'Asset type', value: 'Demo equity'),
                 ],
               ),
             ),
-            child: Center(child: CompanyAvatar(company: company, radius: 52)),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            company.name,
-            style: const TextStyle(
-              fontSize: 32,
-              height: 1,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -1.1,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            '${company.ticker}c  ·  Base Sepolia',
-            style: const TextStyle(color: AppColors.muted, fontSize: 12),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            company.description,
-            style: const TextStyle(height: 1.45, color: Color(0xFFD4DEE3)),
-          ),
-          const SizedBox(height: 12),
-          Wrap(spacing: 8, children: company.products.map(Pill.new).toList()),
-          const SizedBox(height: 14),
-          GlassCard(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '\$${company.price.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 25,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    Text(
-                      '+${company.change}% today',
-                      style: const TextStyle(
-                        color: AppColors.green,
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(
-                  width: 100,
-                  child: Icon(
-                    Icons.show_chart,
-                    color: AppColors.green,
-                    size: 52,
+            const Divider(height: 30, color: AppColors.border),
+            _PassportTabs(company: company, articles: state.articles),
+            const Divider(height: 30, color: AppColors.border),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 28),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.travel_explore,
+                    color: AppColors.blue,
+                    size: 18,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      args.source,
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          BlocBuilder<AuthBloc, AuthState>(
-            buildWhen: (previous, current) => previous.mode != current.mode,
-            builder: (context, _) => FilledButton(
-              onPressed: () => _own(context),
-              child: Text('Own ${company.name}'),
-            ),
-          ),
-          const SizedBox(height: 22),
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _PassportTab('About', selected: true),
-              _PassportTab('Products'),
-              _PassportTab('News'),
-            ],
-          ),
-          const Divider(height: 20),
-          const Text(
-            'Discovered through',
-            style: TextStyle(color: AppColors.muted, fontSize: 11),
-          ),
-          const SizedBox(height: 10),
-          GlassCard(
-            child: Row(
-              children: [
-                const Icon(Icons.travel_explore, color: AppColors.blue),
-                const SizedBox(width: 12),
-                Expanded(child: Text(args.source)),
-              ],
-            ),
-          ),
-        ],
+          ],
+        ),
+      ),
+      bottomNavigationBar: _OwnBar(
+        company: company,
+        onOwn: () => _own(context),
       ),
     );
   }
 }
 
-class _PassportTab extends StatelessWidget {
-  const _PassportTab(this.label, {this.selected = false});
+/// The price, and the move that goes with it.
+class _PriceHeadline extends StatelessWidget {
+  const _PriceHeadline({required this.company, required this.state});
 
-  final String label;
-  final bool selected;
+  final Company company;
+  final PassportState state;
 
   @override
-  Widget build(BuildContext context) => Text(
-    label,
-    style: TextStyle(
-      color: selected ? Colors.white : AppColors.muted,
-      fontSize: 12,
-      fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+  Widget build(BuildContext context) {
+    // Before the first series lands, the company's own daily move stands in,
+    // so the number never flashes from one value to another.
+    final change = state.series?.change ?? company.change;
+    final isUp = change >= 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '\$${company.price.toStringAsFixed(2)}',
+          style: const TextStyle(
+            fontSize: 40,
+            height: 1.05,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -1.6,
+          ),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          children: [
+            Icon(
+              isUp ? Icons.north_east_rounded : Icons.south_east_rounded,
+              size: 15,
+              color: isUp ? AppColors.green : AppColors.red,
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '${change.abs().toStringAsFixed(2)}%',
+              style: TextStyle(
+                color: isUp ? AppColors.green : AppColors.red,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(width: 7),
+            Text(
+              state.range.label,
+              style: const TextStyle(color: AppColors.muted, fontSize: 12.5),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// About / Products / News — previously three words that did nothing.
+class _PassportTabs extends StatefulWidget {
+  const _PassportTabs({required this.company, required this.articles});
+
+  final Company company;
+  final List<NewsArticle> articles;
+
+  @override
+  State<_PassportTabs> createState() => _PassportTabsState();
+}
+
+class _PassportTabsState extends State<_PassportTabs> {
+  static const _tabs = ['About', 'Products', 'News'];
+
+  int _index = 0;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          children: [
+            for (final (index, tab) in _tabs.indexed)
+              Expanded(
+                child: GestureDetector(
+                  onTap: () => setState(() => _index = index),
+                  behavior: HitTestBehavior.opaque,
+                  child: Column(
+                    children: [
+                      Text(
+                        tab,
+                        style: TextStyle(
+                          color: index == _index
+                              ? Colors.white
+                              : AppColors.muted,
+                          fontSize: 13,
+                          fontWeight: index == _index
+                              ? FontWeight.w700
+                              : FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 9),
+                      // The rule under the active tab is the only selected
+                      // state, so it carries the full weight.
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        height: 2,
+                        color: index == _index
+                            ? Colors.white
+                            : Colors.transparent,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+      Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+        child: switch (_index) {
+          0 => Text(
+            widget.company.description,
+            style: const TextStyle(height: 1.55, color: Color(0xFFD4DEE3)),
+          ),
+          1 => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (final product in widget.company.products)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 13),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 16,
+                        color: AppColors.muted,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(product, style: const TextStyle(fontSize: 14.5)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+          _ => NewsList(articles: widget.articles),
+        },
+      ),
+    ],
+  );
+}
+
+/// The one action on the page, pinned so it never scrolls away.
+class _OwnBar extends StatelessWidget {
+  const _OwnBar({required this.company, required this.onOwn});
+
+  final Company company;
+  final VoidCallback onOwn;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: const BoxDecoration(
+      color: AppColors.background,
+      border: Border(top: BorderSide(color: AppColors.border)),
+    ),
+    child: SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            BlocBuilder<AuthBloc, AuthState>(
+              buildWhen: (previous, current) => previous.mode != current.mode,
+              builder: (context, _) => FilledButton(
+                onPressed: onOwn,
+                child: Text('Own ${company.name}'),
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Demo assets on Base Sepolia. No real funds are required.',
+              style: TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }
