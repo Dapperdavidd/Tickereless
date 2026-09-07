@@ -35,6 +35,20 @@ class AuthRepositoryImpl implements AuthRepository {
   });
 
   @override
+  Future<AuthSession?> restoreSession() async {
+    try {
+      final cached = await _localDataSource.readSession();
+      if (cached != null) return cached;
+      final token = await _localDataSource.readToken();
+      if (token == null || token.isEmpty) return null;
+      return await _remoteDataSource.restoreSession(token);
+    } catch (_) {
+      await _localDataSource.clearToken();
+      return null;
+    }
+  }
+
+  @override
   Future<void> signOut() async {
     try {
       await _localDataSource.clearToken();
@@ -48,7 +62,7 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<AuthSession> _persist(Future<AuthSession> Function() exchange) async {
     try {
       final session = await exchange();
-      await _localDataSource.cacheToken(session.accessToken);
+      await _localDataSource.cacheSession(session);
       return session;
     } on ApiException catch (error) {
       throw AuthFailure(error.message);

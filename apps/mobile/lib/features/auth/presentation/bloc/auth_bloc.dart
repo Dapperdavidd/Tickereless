@@ -3,6 +3,7 @@ import 'package:tickerless/core/error/failures.dart';
 import 'package:tickerless/features/auth/domain/entities/access_mode.dart';
 import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 import 'package:tickerless/features/auth/domain/usecases/register_with_email.dart';
+import 'package:tickerless/features/auth/domain/usecases/restore_session.dart';
 import 'package:tickerless/features/auth/domain/usecases/sign_in_with_email.dart';
 import 'package:tickerless/features/auth/domain/usecases/sign_in_with_google.dart';
 import 'package:tickerless/features/auth/domain/usecases/sign_out.dart';
@@ -17,17 +18,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required SignInWithGoogleUseCase signInWithGoogle,
     required SignOutUseCase signOut,
     required EnsureWalletUseCase ensureWallet,
+    required RestoreSessionUseCase restoreSession,
   }) : _signInWithEmail = signInWithEmail,
        _registerWithEmail = registerWithEmail,
        _signInWithGoogle = signInWithGoogle,
        _signOut = signOut,
        _ensureWallet = ensureWallet,
+       _restoreSession = restoreSession,
        super(const AuthState()) {
+    on<AuthRestoreRequested>(_onRestoreRequested);
     on<AuthGuestRequested>(_onGuestRequested);
     on<AuthEmailSubmitted>(_onEmailSubmitted);
     on<AuthGoogleRequested>(_onGoogleRequested);
     on<AuthSignOutRequested>(_onSignOutRequested);
     on<AuthErrorDismissed>(_onErrorDismissed);
+    add(const AuthRestoreRequested());
   }
 
   final SignInWithEmailUseCase _signInWithEmail;
@@ -35,6 +40,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SignInWithGoogleUseCase _signInWithGoogle;
   final SignOutUseCase _signOut;
   final EnsureWalletUseCase _ensureWallet;
+  final RestoreSessionUseCase _restoreSession;
+
+  Future<void> _onRestoreRequested(
+    AuthRestoreRequested event,
+    Emitter<AuthState> emit,
+  ) async {
+    try {
+      final session = await _restoreSession();
+      if (session == null) return;
+      final wallet = await _ensureWallet(session.userId);
+      emit(
+        AuthState(
+          mode: AccessMode.authenticated,
+          session: session,
+          walletAddress: wallet.address,
+        ),
+      );
+    } on Failure {
+      emit(const AuthState());
+    }
+  }
 
   void _onGuestRequested(AuthGuestRequested event, Emitter<AuthState> emit) {
     emit(const AuthState(mode: AccessMode.guest));

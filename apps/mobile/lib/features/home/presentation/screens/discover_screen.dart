@@ -10,7 +10,6 @@ import 'package:tickerless/features/discovery/domain/entities/discovery_source.d
 import 'package:tickerless/features/home/presentation/widgets/discover_header.dart';
 import 'package:tickerless/features/home/presentation/widgets/discovery_tile.dart';
 import 'package:tickerless/features/home/presentation/widgets/lens_fab.dart';
-import 'package:tickerless/features/home/presentation/widgets/masonry_grid.dart';
 import 'package:tickerless/features/home/presentation/widgets/section_bar.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.dart';
@@ -23,9 +22,6 @@ import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.
 /// the thing the user actually came to look at.
 class DiscoverScreen extends StatelessWidget {
   const DiscoverScreen({super.key});
-
-  /// Cycled by position so the grid never lands on a uniform brick pattern.
-  static const _shapes = [.78, 1.12, .95, .82, 1.24, .88, 1.0, .76];
 
   @override
   Widget build(BuildContext context) => Stack(
@@ -59,17 +55,52 @@ class DiscoverScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 14),
-            MasonryGrid(
-              items: [
-                for (final (index, company) in DemoCompanies.trending.indexed)
-                  MasonryItem(
-                    aspectRatio: _shapes[index % _shapes.length],
+            SizedBox(
+              height: 228,
+              child: DiscoveryTile(
+                company: DemoCompanies.nvidia,
+                onTap: () => _openPassport(context, DemoCompanies.nvidia),
+              ),
+            ),
+            const SizedBox(height: 26),
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  Text(
+                    'Across your world',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -.5,
+                    ),
+                  ),
+                  Spacer(),
+                  Text(
+                    'Swipe →',
+                    style: TextStyle(color: AppColors.muted, fontSize: 12.5),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 13),
+            SizedBox(
+              height: 178,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: DemoCompanies.trending.length - 1,
+                separatorBuilder: (_, _) => const SizedBox(width: 9),
+                itemBuilder: (context, index) {
+                  final company = DemoCompanies.trending[index + 1];
+                  return SizedBox(
+                    width: 154,
                     child: DiscoveryTile(
                       company: company,
                       onTap: () => _openPassport(context, company),
                     ),
-                  ),
-              ],
+                  );
+                },
+              ),
             ),
             const SizedBox(height: 22),
             const _DemoFootnote(),

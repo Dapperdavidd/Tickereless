@@ -15,4 +15,13 @@ class AuthSessionModel extends AuthSession {
       userId: user['id'].toString(),
     );
   }
+
+  factory AuthSessionModel.fromUser(
+    Map<String, dynamic> user,
+    String accessToken,
+  ) => AuthSessionModel(
+    accessToken: accessToken,
+    email: user['email'].toString(),
+    userId: user['id'].toString(),
+  );
 }

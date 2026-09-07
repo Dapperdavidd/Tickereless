@@ -47,12 +47,16 @@ GoRouter createAppRouter(AuthBloc authBloc) => GoRouter(
   // the app controls once deep links exist.
   redirect: (context, state) {
     final signedOut = authBloc.state.mode == AccessMode.signedOut;
+    final authenticated = authBloc.state.mode == AccessMode.authenticated;
     final atDoor =
         state.matchedLocation == AppRoutes.onboarding ||
         state.matchedLocation == AppRoutes.emailAuth;
 
     if (signedOut && !atDoor) return AppRoutes.onboarding;
     if (!signedOut && state.matchedLocation == AppRoutes.onboarding) {
+      return AppRoutes.discover;
+    }
+    if (authenticated && state.matchedLocation == AppRoutes.emailAuth) {
       return AppRoutes.discover;
     }
     return null;

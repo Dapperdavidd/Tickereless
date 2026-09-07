@@ -76,15 +76,19 @@ class DiscoveryTile extends StatelessWidget {
                   const SizedBox(height: 3),
                   Row(
                     children: [
-                      Text(
-                        company.symbol,
-                        style: TextStyle(
-                          color: ink.withValues(alpha: .62),
-                          fontSize: 11,
-                          letterSpacing: .2,
+                      Expanded(
+                        child: Text(
+                          company.symbol,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ink.withValues(alpha: .62),
+                            fontSize: 11,
+                            letterSpacing: .2,
+                          ),
                         ),
                       ),
-                      const Spacer(),
+                      const SizedBox(width: 6),
                       Text(
                         '+${company.change}%',
                         style: TextStyle(

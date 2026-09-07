@@ -30,6 +30,7 @@ class _TickerlessAppState extends State<TickerlessApp> {
     signInWithGoogle: widget.dependencies.signInWithGoogle,
     signOut: widget.dependencies.signOut,
     ensureWallet: widget.dependencies.ensureWallet,
+    restoreSession: widget.dependencies.restoreSession,
   );
 
   late final GoRouter _router = createAppRouter(_authBloc);

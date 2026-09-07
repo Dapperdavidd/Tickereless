@@ -55,6 +55,18 @@ void main() {
     expect(find.text('Guest mode'), findsOneWidget);
   });
 
+  testWidgets('guest upgrade offers both email and Google', (tester) async {
+    await enterAsGuest(tester);
+    await tester.tap(find.bySemanticsLabel('Wallet'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sign in or create account'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Make it yours.'), findsOneWidget);
+    expect(find.text('Continue with email'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
+  });
+
   testWidgets('authentication choices remain visible', (tester) async {
     await pumpApp(tester);
 

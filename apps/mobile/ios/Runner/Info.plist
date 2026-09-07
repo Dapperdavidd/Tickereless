@@ -17,6 +17,8 @@
 	</array>
 	<key>NSCameraUsageDescription</key>
 	<string>Tickerless uses the camera to recognize products and companies.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Tickerless lets you choose a profile photo from your library.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Tickerless connects to the development API on your local network.</string>
 	<key>NSAppTransportSecurity</key>

@@ -7,6 +7,10 @@ abstract class AuthEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+class AuthRestoreRequested extends AuthEvent {
+  const AuthRestoreRequested();
+}
+
 /// Explore without an account. Discovery works; purchasing does not.
 class AuthGuestRequested extends AuthEvent {
   const AuthGuestRequested();

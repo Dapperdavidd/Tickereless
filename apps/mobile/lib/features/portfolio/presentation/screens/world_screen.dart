@@ -20,14 +20,25 @@ class _WorldScreenState extends State<WorldScreen> {
     DemoCompanies.nvidia,
     DemoCompanies.meta,
     DemoCompanies.alphabet,
+    DemoCompanies.tesla,
+    DemoCompanies.spotify,
+    DemoCompanies.amazon,
+    DemoCompanies.microsoft,
   ];
-  String _filter = 'All';
+  final _searchController = TextEditingController();
+  String _query = '';
   late Future<List<_CompanyStory>> _stories;
 
   @override
   void initState() {
     super.initState();
     _stories = _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<List<_CompanyStory>> _load() async {
@@ -60,9 +71,15 @@ class _WorldScreenState extends State<WorldScreen> {
       future: _stories,
       builder: (context, snapshot) {
         final all = snapshot.data ?? const <_CompanyStory>[];
-        final visible = _filter == 'All'
+        final needle = _query.trim().toLowerCase();
+        final visible = needle.isEmpty
             ? all
-            : all.where((story) => story.company.ticker == _filter).toList();
+            : all.where((story) {
+                final searchable =
+                    '${story.company.name} ${story.company.ticker} ${story.article.headline} ${story.article.source}'
+                        .toLowerCase();
+                return searchable.contains(needle);
+              }).toList();
         return RefreshIndicator(
           onRefresh: _refresh,
           child: ListView(
@@ -82,34 +99,27 @@ class _WorldScreenState extends State<WorldScreen> {
                 style: TextStyle(color: AppColors.muted),
               ),
               const SizedBox(height: 24),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    for (final label in const [
-                      'All',
-                      'AAPL',
-                      'NVDA',
-                      'META',
-                      'GOOGL',
-                    ])
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(label),
-                          selected: _filter == label,
-                          onSelected: (_) => setState(() => _filter = label),
+              TextField(
+                controller: _searchController,
+                onChanged: (value) => setState(() => _query = value),
+                decoration: InputDecoration(
+                  hintText: 'Search company or news…',
+                  prefixIcon: const Icon(Icons.search_rounded),
+                  suffixIcon: _query.isEmpty
+                      ? null
+                      : IconButton(
+                          tooltip: 'Clear search',
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() => _query = '');
+                          },
+                          icon: const Icon(Icons.close_rounded),
                         ),
-                      ),
-                  ],
                 ),
               ),
               const SizedBox(height: 24),
               if (snapshot.connectionState == ConnectionState.waiting)
-                const Padding(
-                  padding: EdgeInsets.only(top: 80),
-                  child: Center(child: CircularProgressIndicator()),
-                )
+                const _NewsSkeleton()
               else if (visible.isEmpty)
                 _EmptyNews(onRetry: _refresh)
               else ...[
@@ -302,4 +312,92 @@ String _ago(DateTime published) {
   if (elapsed.inMinutes < 60) return '${elapsed.inMinutes.clamp(0, 59)}m ago';
   if (elapsed.inHours < 24) return '${elapsed.inHours}h ago';
   return '${elapsed.inDays}d ago';
+}
+
+class _NewsSkeleton extends StatefulWidget {
+  const _NewsSkeleton();
+  @override
+  State<_NewsSkeleton> createState() => _NewsSkeletonState();
+}
+
+class _NewsSkeletonState extends State<_NewsSkeleton>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1250),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _controller,
+    builder: (context, _) {
+      final pulse = _controller.value < .5
+          ? _controller.value
+          : 1 - _controller.value;
+      final color = Colors.white.withValues(alpha: .06 + pulse * .18);
+      Widget bar(double width, double height) => Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(10),
+        ),
+      );
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            height: 210,
+            padding: const EdgeInsets.all(22),
+            decoration: BoxDecoration(
+              color: AppColors.surfaceRaised,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.border),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                bar(110, 14),
+                const Spacer(),
+                bar(double.infinity, 24),
+                const SizedBox(height: 10),
+                bar(240, 24),
+                const SizedBox(height: 18),
+                bar(130, 12),
+              ],
+            ),
+          ),
+          const SizedBox(height: 30),
+          bar(80, 18),
+          const SizedBox(height: 22),
+          for (var index = 0; index < 3; index++)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 24),
+              child: Row(
+                children: [
+                  bar(30, 30),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        bar(double.infinity, 15),
+                        const SizedBox(height: 8),
+                        bar(180, 11),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    },
+  );
 }

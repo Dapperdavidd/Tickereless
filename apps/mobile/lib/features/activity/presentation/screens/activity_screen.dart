@@ -6,6 +6,7 @@ import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_state.dart';
+import 'package:tickerless/features/auth/presentation/widgets/sign_in_sheet.dart';
 import 'package:tickerless/features/discovery/presentation/widgets/company_avatar.dart';
 import 'package:tickerless/features/portfolio/domain/entities/owned_position.dart';
 import 'package:tickerless/features/portfolio/domain/entities/portfolio_transaction.dart';
@@ -333,7 +334,7 @@ class _GuestWallet extends StatelessWidget {
           ),
           const SizedBox(height: 26),
           FilledButton(
-            onPressed: () => context.push(AppRoutes.emailAuth),
+            onPressed: () => showSignInSheet(context),
             child: const Text('Sign in or create account'),
           ),
           const Spacer(),

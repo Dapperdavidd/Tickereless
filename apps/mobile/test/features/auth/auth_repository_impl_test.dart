@@ -10,6 +10,7 @@ import 'package:tickerless/features/auth/data/datasource/auth_local_datasource.d
 import 'package:tickerless/features/auth/data/datasource/auth_remote_datasource.dart';
 import 'package:tickerless/features/auth/data/datasource/google_sign_in_datasource.dart';
 import 'package:tickerless/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 
 const _sessionBody =
     '{"access_token":"tickerless-session","token_type":"Bearer",'
@@ -122,19 +123,70 @@ void main() {
 
     expect(tokens.token, isNull);
   });
+
+  test('a cached token restores the account without another sign-in', () async {
+    final repository = repositoryWith(
+      MockClient((request) async {
+        expect(request.url.path, '/v1/auth/me');
+        expect(request.headers['authorization'], 'Bearer saved-session');
+        return http.Response(
+          '{"id":"00000000-0000-0000-0000-000000000001","email":"owner@example.com","wallet_address":null}',
+          200,
+        );
+      }),
+    );
+    tokens.token = 'saved-session';
+
+    final session = await repository.restoreSession();
+
+    expect(session?.accessToken, 'saved-session');
+    expect(session?.email, 'owner@example.com');
+  });
+
+  test(
+    'a cached identity restores even while the backend is offline',
+    () async {
+      final repository = repositoryWith(
+        MockClient((request) async => throw http.ClientException('offline')),
+      );
+      tokens.session = const AuthSession(
+        accessToken: 'saved-session',
+        userId: '00000000-0000-0000-0000-000000000001',
+        email: 'owner@example.com',
+      );
+
+      final session = await repository.restoreSession();
+
+      expect(session?.accessToken, 'saved-session');
+      expect(session?.email, 'owner@example.com');
+    },
+  );
 }
 
 class _MemoryTokenStore implements AuthLocalDataSource {
   String? token;
+  AuthSession? session;
 
   @override
   Future<void> cacheToken(String value) async => token = value;
 
   @override
+  Future<void> cacheSession(AuthSession value) async {
+    session = value;
+    token = value.accessToken;
+  }
+
+  @override
   Future<String?> readToken() async => token;
 
   @override
-  Future<void> clearToken() async => token = null;
+  Future<AuthSession?> readSession() async => session;
+
+  @override
+  Future<void> clearToken() async {
+    token = null;
+    session = null;
+  }
 }
 
 class _StubGoogleDataSource implements GoogleSignInDataSource {

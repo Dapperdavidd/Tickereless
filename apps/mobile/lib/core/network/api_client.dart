@@ -36,5 +36,25 @@ class ApiClient {
     return decoded;
   }
 
+  Future<Map<String, dynamic>> getJson(
+    String path, {
+    String? bearerToken,
+    required String fallbackError,
+  }) async {
+    final response = await _client
+        .get(
+          Uri.parse('$_baseUrl$path'),
+          headers: {
+            if (bearerToken != null) 'authorization': 'Bearer $bearerToken',
+          },
+        )
+        .timeout(ApiConfig.requestTimeout);
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(decoded['message']?.toString() ?? fallbackError);
+    }
+    return decoded;
+  }
+
   void close() => _client.close();
 }

@@ -5,6 +5,7 @@ import 'package:tickerless/features/auth/data/datasource/google_sign_in_datasour
 import 'package:tickerless/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
 import 'package:tickerless/features/auth/domain/usecases/register_with_email.dart';
+import 'package:tickerless/features/auth/domain/usecases/restore_session.dart';
 import 'package:tickerless/features/auth/domain/usecases/sign_in_with_email.dart';
 import 'package:tickerless/features/auth/domain/usecases/sign_in_with_google.dart';
 import 'package:tickerless/features/auth/domain/usecases/sign_out.dart';
@@ -87,6 +88,7 @@ class AppDependencies {
     required NewsRepository newsRepository,
   }) : signInWithEmail = SignInWithEmailUseCase(repository: authRepository),
        registerWithEmail = RegisterWithEmailUseCase(repository: authRepository),
+       restoreSession = RestoreSessionUseCase(repository: authRepository),
        signInWithGoogle = SignInWithGoogleUseCase(repository: authRepository),
        signOut = SignOutUseCase(repository: authRepository),
        ensureWallet = EnsureWalletUseCase(repository: walletRepository),
@@ -106,6 +108,7 @@ class AppDependencies {
 
   final SignInWithEmailUseCase signInWithEmail;
   final RegisterWithEmailUseCase registerWithEmail;
+  final RestoreSessionUseCase restoreSession;
   final SignInWithGoogleUseCase signInWithGoogle;
   final SignOutUseCase signOut;
 

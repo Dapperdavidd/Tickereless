@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -32,6 +33,11 @@ class OfficialNewsRepository implements NewsRepository {
     'NVDA': 'https://blogs.nvidia.com/feed/',
     'META': 'https://about.fb.com/news/feed/',
     'GOOGL': 'https://blog.google/rss/',
+    'TSLA':
+        'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=1318605&type=8-K&output=atom',
+    'SPOT': 'https://newsroom.spotify.com/feed/',
+    'AMZN': 'https://www.aboutamazon.com/news/rss',
+    'MSFT': 'https://blogs.microsoft.com/feed/',
   };
 
   @override
@@ -39,20 +45,29 @@ class OfficialNewsRepository implements NewsRepository {
     final feed = _feeds[ticker];
     if (feed == null) return const [];
     final response = await _client
-        .get(Uri.parse(feed))
+        .get(
+          Uri.parse(feed),
+          headers: const {'user-agent': 'Tickerless demo app'},
+        )
         .timeout(const Duration(seconds: 10));
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception('News is temporarily unavailable.');
     }
-    final document = XmlDocument.parse(response.body);
-    return document
-        .findAllElements('item')
+    final document = XmlDocument.parse(utf8.decode(response.bodyBytes));
+    final entries = document.findAllElements('item').isNotEmpty
+        ? document.findAllElements('item')
+        : document.findAllElements('entry');
+    return entries
         .take(8)
         .map((item) {
           final title =
               item.getElement('title')?.innerText.trim() ?? 'Untitled';
-          final url = item.getElement('link')?.innerText.trim() ?? feed;
-          final published = item.getElement('pubDate')?.innerText.trim();
+          final link = item.getElement('link');
+          final url =
+              link?.getAttribute('href') ?? link?.innerText.trim() ?? feed;
+          final published =
+              item.getElement('pubDate')?.innerText.trim() ??
+              item.getElement('updated')?.innerText.trim();
           return NewsArticle(
             headline: title,
             source: _sourceName(ticker),
@@ -68,6 +83,10 @@ class OfficialNewsRepository implements NewsRepository {
     'NVDA' => 'NVIDIA Blog',
     'META' => 'Meta Newsroom',
     'GOOGL' => 'Google Blog',
+    'TSLA' => 'SEC filings',
+    'SPOT' => 'Spotify Newsroom',
+    'AMZN' => 'Amazon News',
+    'MSFT' => 'Microsoft Blog',
     _ => ticker,
   };
 
