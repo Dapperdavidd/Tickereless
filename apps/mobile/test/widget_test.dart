@@ -25,6 +25,19 @@ void main() {
     expect(find.bySemanticsLabel('Continue as guest'), findsOneWidget);
   });
 
+  testWidgets('onboarding advances through the shared world automatically', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const TickerlessApp());
+
+    expect(find.text('The world is\nthe stock market.'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 1200));
+
+    expect(find.text('Same world.\nMore owners.'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
+  });
+
   testWidgets('search journey reaches a Base Sepolia ownership confirmation', (
     tester,
   ) async {

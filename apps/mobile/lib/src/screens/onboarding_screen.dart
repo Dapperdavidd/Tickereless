@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -86,6 +87,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       builder: (context, constraints) => Stack(
         fit: StackFit.expand,
         children: [
+          _StarField(controller: controller),
           _EarthPanorama(
             controller: controller,
             viewportWidth: constraints.maxWidth,
@@ -186,15 +188,73 @@ class _EarthPanorama extends StatelessWidget {
       minWidth: viewportWidth * _pageCount,
       child: SizedBox(
         width: viewportWidth * _pageCount,
-        child: Image.asset(
-          'assets/images/earth-panorama.png',
-          fit: BoxFit.cover,
-          alignment: Alignment.center,
-          filterQuality: FilterQuality.high,
+        child: Align(
+          alignment: Alignment.bottomCenter,
+          child: ShaderMask(
+            blendMode: BlendMode.dstIn,
+            shaderCallback: (bounds) => const LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Colors.transparent, Colors.white, Colors.white],
+              stops: [0, .18, 1],
+            ).createShader(bounds),
+            child: Image.asset(
+              'assets/images/earth-journey-v2.png',
+              width: viewportWidth * _pageCount,
+              fit: BoxFit.fitWidth,
+              filterQuality: FilterQuality.high,
+            ),
+          ),
         ),
       ),
     ),
   );
+}
+
+class _StarField extends StatelessWidget {
+  const _StarField({required this.controller});
+
+  final PageController controller;
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: controller,
+    builder: (context, child) {
+      final position = controller.hasClients
+          ? (controller.page ?? controller.initialPage.toDouble())
+          : controller.initialPage.toDouble();
+      return Transform.translate(
+        offset: Offset(-position * 16, 0),
+        child: child,
+      );
+    },
+    child: const RepaintBoundary(
+      child: CustomPaint(painter: _StarFieldPainter()),
+    ),
+  );
+}
+
+class _StarFieldPainter extends CustomPainter {
+  const _StarFieldPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final random = math.Random(1709);
+    for (var index = 0; index < 72; index++) {
+      final x = random.nextDouble() * (size.width + 72);
+      final y = 60 + random.nextDouble() * size.height * .68;
+      final radius = .35 + random.nextDouble() * 1.05;
+      final opacity = .18 + random.nextDouble() * .52;
+      canvas.drawCircle(
+        Offset(x, y),
+        radius,
+        Paint()..color = Colors.white.withValues(alpha: opacity),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _EdgeVignette extends StatelessWidget {
