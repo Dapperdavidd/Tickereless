@@ -79,7 +79,8 @@ void main() {
     );
 
     expect(
-      () => repository.registerWithEmail('owner@example.com', 'secure-password'),
+      () =>
+          repository.registerWithEmail('owner@example.com', 'secure-password'),
       throwsA(
         isA<AuthFailure>().having(
           (failure) => failure.message,

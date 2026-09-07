@@ -205,7 +205,11 @@ void main() {
     // Sign Out sits at the bottom of a long list, so it is not built until
     // the list scrolls that far.
     final signOut = find.text('Sign Out');
-    await tester.scrollUntilVisible(signOut, 240, scrollable: find.byType(Scrollable).last);
+    await tester.scrollUntilVisible(
+      signOut,
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
     await tester.tap(signOut);
     await tester.pumpAndSettle();
 
