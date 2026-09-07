@@ -17,7 +17,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final controller = PageController();
+  final controller = PageController(keepPage: false);
   final googleAuth = GoogleAuthService();
   Timer? _autoplay;
   int page = 0;
@@ -88,6 +88,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         fit: StackFit.expand,
         children: [
           _StarField(controller: controller),
+          _SunFlare(controller: controller),
           _EarthPanorama(
             controller: controller,
             viewportWidth: constraints.maxWidth,
@@ -114,19 +115,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           eyebrow: 'LOOK CLOSER',
                           title: 'The world is\nthe stock market.',
                           body: 'Point at what you see.\nSearch what you’re curious about.\nOwn a piece of it.',
-                          alignment: _CopyAlignment.lower,
                         ),
                         _StoryPage(
                           eyebrow: 'A MORE OPEN WORLD',
                           title: 'Same world.\nMore owners.',
                           body: 'The things you notice every day\ncan become part of your world.',
-                          alignment: _CopyAlignment.upper,
                         ),
                         _StoryPage(
                           eyebrow: 'DISCOVER → OWN',
                           title: 'Turn attention\ninto ownership.',
                           body: 'Scan a product. Search an idea.\nPaste a link. Find the company\nbehind what caught your eye.',
-                          alignment: _CopyAlignment.lower,
+                          showMethods: true,
                         ),
                       ],
                     ),
@@ -195,11 +194,16 @@ class _EarthPanorama extends StatelessWidget {
             shaderCallback: (bounds) => const LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Colors.transparent, Colors.white, Colors.white],
-              stops: [0, .18, 1],
+              colors: [
+                Colors.transparent,
+                Colors.transparent,
+                Colors.white,
+                Colors.white,
+              ],
+              stops: [0, .2, .42, 1],
             ).createShader(bounds),
             child: Image.asset(
-              'assets/images/earth-journey-v2.png',
+              'assets/images/earth-journey-v3.png',
               width: viewportWidth * _pageCount,
               fit: BoxFit.fitWidth,
               filterQuality: FilterQuality.high,
@@ -257,6 +261,51 @@ class _StarFieldPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+class _SunFlare extends StatelessWidget {
+  const _SunFlare({required this.controller});
+
+  final PageController controller;
+
+  @override
+  Widget build(BuildContext context) => IgnorePointer(
+    child: AnimatedBuilder(
+      animation: controller,
+      builder: (context, child) {
+        final position = controller.hasClients
+            ? (controller.page ?? controller.initialPage.toDouble())
+            : controller.initialPage.toDouble();
+        final visibility = (1 - position).clamp(0.0, 1.0);
+        return Opacity(
+          opacity: visibility,
+          child: Transform.translate(
+            offset: Offset(-position * 90, position * 8),
+            child: child,
+          ),
+        );
+      },
+      child: Align(
+        alignment: const Alignment(-.86, -.78),
+        child: Container(
+          width: 118,
+          height: 118,
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: RadialGradient(
+              colors: [
+                Color(0xFFFFFFFF),
+                Color(0xFFFFE2B8),
+                Color(0x55D68A48),
+                Colors.transparent,
+              ],
+              stops: [0, .035, .19, 1],
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _EdgeVignette extends StatelessWidget {
   const _EdgeVignette();
 
@@ -281,30 +330,27 @@ class _EdgeVignette extends StatelessWidget {
   );
 }
 
-enum _CopyAlignment { upper, lower }
-
 class _StoryPage extends StatelessWidget {
   const _StoryPage({
     required this.eyebrow,
     required this.title,
     required this.body,
-    required this.alignment,
+    this.showMethods = false,
   });
 
   final String eyebrow;
   final String title;
   final String body;
-  final _CopyAlignment alignment;
+  final bool showMethods;
 
   @override
   Widget build(BuildContext context) {
-    final upper = alignment == _CopyAlignment.upper;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 26),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (upper) const SizedBox(height: 42) else const Spacer(),
+          const SizedBox(height: 42),
           Text(
             eyebrow,
             style: const TextStyle(
@@ -345,11 +391,76 @@ class _StoryPage extends StatelessWidget {
               shadows: [Shadow(color: Colors.black, blurRadius: 12)],
             ),
           ),
-          if (upper) const Spacer() else const SizedBox(height: 12),
+          if (showMethods) ...[
+            const SizedBox(height: 20),
+            const _DiscoveryMethods(),
+          ],
+          const Spacer(),
         ],
       ),
     );
   }
+}
+
+class _DiscoveryMethods extends StatelessWidget {
+  const _DiscoveryMethods();
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: const [
+      Expanded(
+        child: _DiscoveryMethod(icon: Icons.camera_alt_outlined, label: 'Lens'),
+      ),
+      SizedBox(width: 9),
+      Expanded(
+        child: _DiscoveryMethod(icon: Icons.link_rounded, label: 'Link'),
+      ),
+      SizedBox(width: 9),
+      Expanded(
+        child: _DiscoveryMethod(icon: Icons.search_rounded, label: 'Search'),
+      ),
+    ],
+  );
+}
+
+class _DiscoveryMethod extends StatelessWidget {
+  const _DiscoveryMethod({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 66,
+    decoration: BoxDecoration(
+      color: Colors.black.withValues(alpha: .46),
+      border: Border.all(color: const Color(0xFF3B5260)),
+      borderRadius: BorderRadius.circular(18),
+      boxShadow: const [
+        BoxShadow(
+          color: Color(0x33000000),
+          blurRadius: 18,
+          offset: Offset(0, 8),
+        ),
+      ],
+    ),
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(icon, size: 22, color: Colors.white),
+        const SizedBox(height: 6),
+        Text(
+          label,
+          style: const TextStyle(
+            color: Color(0xFFD9E4EA),
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            letterSpacing: .2,
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _Dots extends StatelessWidget {
