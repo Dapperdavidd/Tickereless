@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
+import 'package:tickerless/app.dart';
 
-import 'src/app.dart';
-
-void main() => runApp(const TickerlessApp());
+void main() => runApp(TickerlessApp());
