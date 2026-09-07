@@ -3,6 +3,8 @@ import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
 import 'package:tickerless/features/discovery/domain/entities/company_match.dart';
 import 'package:tickerless/features/discovery/domain/repositories/discovery_repository.dart';
+import 'package:tickerless/features/market/domain/entities/news_article.dart';
+import 'package:tickerless/features/market/domain/repositories/news_repository.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:tickerless/features/wallet/domain/repositories/wallet_repository.dart';
 
@@ -16,6 +18,7 @@ AppDependencies fakeDependencies({
   authRepository: auth ?? FakeAuthRepository(),
   walletRepository: FakeWalletRepository(),
   discoveryRepository: discovery ?? FakeDiscoveryRepository(),
+  newsRepository: FakeNewsRepository(),
 );
 
 class FakeAuthRepository implements AuthRepository {
@@ -49,6 +52,18 @@ class FakeWalletRepository implements WalletRepository {
 
   @override
   Future<String> revealPrivateKey(String userId) async => '0x${'a' * 64}';
+}
+
+class FakeNewsRepository implements NewsRepository {
+  @override
+  Future<List<NewsArticle>> forCompany(String ticker) async => [
+    NewsArticle(
+      headline: '$ticker official newsroom update',
+      source: '$ticker Newsroom',
+      publishedAt: DateTime(2026, 9, 7),
+      url: 'https://example.com/$ticker',
+    ),
+  ];
 }
 
 /// The screens all open on their own worked examples, so the flows under test

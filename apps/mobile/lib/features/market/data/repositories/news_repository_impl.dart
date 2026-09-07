@@ -1,5 +1,9 @@
+import 'dart:io';
+
+import 'package:http/http.dart' as http;
 import 'package:tickerless/features/market/domain/entities/news_article.dart';
 import 'package:tickerless/features/market/domain/repositories/news_repository.dart';
+import 'package:xml/xml.dart';
 
 /// There is no news feed yet — the backend exposes a resolver and a purchase
 /// quote, nothing else.
@@ -13,4 +17,66 @@ class EmptyNewsRepository implements NewsRepository {
 
   @override
   Future<List<NewsArticle>> forCompany(String ticker) async => const [];
+}
+
+/// Reads each supported company's own newsroom feed. This keeps the hub current
+/// without inventing headlines or requiring a third-party API key.
+class OfficialNewsRepository implements NewsRepository {
+  OfficialNewsRepository({http.Client? client})
+    : _client = client ?? http.Client();
+
+  final http.Client _client;
+
+  static const _feeds = {
+    'AAPL': 'https://www.apple.com/newsroom/rss-feed.rss',
+    'NVDA': 'https://blogs.nvidia.com/feed/',
+    'META': 'https://about.fb.com/news/feed/',
+    'GOOGL': 'https://blog.google/rss/',
+  };
+
+  @override
+  Future<List<NewsArticle>> forCompany(String ticker) async {
+    final feed = _feeds[ticker];
+    if (feed == null) return const [];
+    final response = await _client
+        .get(Uri.parse(feed))
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('News is temporarily unavailable.');
+    }
+    final document = XmlDocument.parse(response.body);
+    return document
+        .findAllElements('item')
+        .take(8)
+        .map((item) {
+          final title =
+              item.getElement('title')?.innerText.trim() ?? 'Untitled';
+          final url = item.getElement('link')?.innerText.trim() ?? feed;
+          final published = item.getElement('pubDate')?.innerText.trim();
+          return NewsArticle(
+            headline: title,
+            source: _sourceName(ticker),
+            publishedAt: _publishedAt(published),
+            url: url,
+          );
+        })
+        .toList(growable: false);
+  }
+
+  static String _sourceName(String ticker) => switch (ticker) {
+    'AAPL' => 'Apple Newsroom',
+    'NVDA' => 'NVIDIA Blog',
+    'META' => 'Meta Newsroom',
+    'GOOGL' => 'Google Blog',
+    _ => ticker,
+  };
+
+  static DateTime _publishedAt(String? value) {
+    if (value == null) return DateTime.now();
+    try {
+      return HttpDate.parse(value);
+    } on FormatException {
+      return DateTime.tryParse(value) ?? DateTime.now();
+    }
+  }
 }

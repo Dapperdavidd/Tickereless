@@ -158,7 +158,7 @@ void main() {
     expect(find.text('on Base Sepolia'), findsOneWidget);
   });
 
-  testWidgets('a purchase lands in Your World', (tester) async {
+  testWidgets('a purchase lands in Wallet transaction history', (tester) async {
     await signIn(tester);
 
     await tester.tap(find.byTooltip('Search'));
@@ -170,15 +170,28 @@ void main() {
     await tester.tap(find.text('Review Purchase'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('View in Your World'));
+    await tester.tap(find.text('View in Wallet'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Your World'), findsOneWidget);
-    // $27 seeded plus the $5 purchase, and Meta keeps both discovery sources.
-    // The total shows twice: the World heading, and Discover's section bar,
-    // which the shell keeps alive in the other branch.
-    expect(find.textContaining(r'$32.00'), findsWidgets);
-    expect(find.textContaining('via Instagram · Search'), findsOneWidget);
+    expect(find.text('Wallet'), findsOneWidget);
+    expect(find.text(r'$32.00'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Recent Transactions'),
+      240,
+      scrollable: find.byType(Scrollable).last,
+    );
+    expect(find.text('Recent Transactions'), findsOneWidget);
+    expect(find.text('Bought tMETAc'), findsWidgets);
+  });
+
+  testWidgets('World is a company news hub', (tester) async {
+    await enterAsGuest(tester);
+    await tester.tap(find.bySemanticsLabel('World'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('World'), findsOneWidget);
+    expect(find.text('Latest'), findsOneWidget);
+    expect(find.textContaining('official newsroom update'), findsWidgets);
   });
 
   testWidgets('guest discovery stops at the purchase sign-in gate', (

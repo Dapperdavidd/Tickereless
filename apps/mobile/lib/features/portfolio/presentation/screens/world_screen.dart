@@ -1,49 +1,305 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
-import 'package:tickerless/core/widgets/hairline_list.dart';
-import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.dart';
-import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.dart';
-import 'package:tickerless/features/portfolio/presentation/widgets/position_row.dart';
-import 'package:tickerless/features/portfolio/presentation/widgets/tab_list.dart';
+import 'package:tickerless/features/discovery/data/registry/demo_companies.dart';
+import 'package:tickerless/features/discovery/domain/entities/company.dart';
+import 'package:tickerless/features/discovery/presentation/widgets/company_logo.dart';
+import 'package:tickerless/features/market/domain/entities/news_article.dart';
+import 'package:tickerless/features/market/domain/usecases/get_company_news.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-/// Everything the user owns, and how they came to own it.
-class WorldScreen extends StatelessWidget {
+class WorldScreen extends StatefulWidget {
   const WorldScreen({super.key});
+  @override
+  State<WorldScreen> createState() => _WorldScreenState();
+}
+
+class _WorldScreenState extends State<WorldScreen> {
+  static const _companies = [
+    DemoCompanies.apple,
+    DemoCompanies.nvidia,
+    DemoCompanies.meta,
+    DemoCompanies.alphabet,
+  ];
+  String _filter = 'All';
+  late Future<List<_CompanyStory>> _stories;
 
   @override
-  Widget build(
-    BuildContext context,
-  ) => BlocBuilder<PortfolioBloc, PortfolioState>(
-    builder: (context, state) => TabList(
-      title: 'Your World',
-      subtitle: switch (state) {
-        PortfolioLoaded() =>
-          '${state.positions.length} companies · ${state.discoveryCount} discoveries · '
-              '\$${state.total.toStringAsFixed(2)}',
-        PortfolioError(:final message) => message,
-        _ => 'Gathering your positions…',
-      },
-      children: [
-        if (state is PortfolioLoaded)
-          HairlineList(
+  void initState() {
+    super.initState();
+    _stories = _load();
+  }
+
+  Future<List<_CompanyStory>> _load() async {
+    final news = context.read<GetCompanyNewsUseCase>();
+    final groups = await Future.wait(
+      _companies.map((company) async {
+        try {
+          return [
+            for (final article in await news(company.ticker))
+              _CompanyStory(company: company, article: article),
+          ];
+        } catch (_) {
+          return <_CompanyStory>[];
+        }
+      }),
+    );
+    return groups.expand((group) => group).toList()
+      ..sort((a, b) => b.article.publishedAt.compareTo(a.article.publishedAt));
+  }
+
+  Future<void> _refresh() async {
+    final next = _load();
+    setState(() => _stories = next);
+    await next;
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: FutureBuilder<List<_CompanyStory>>(
+      future: _stories,
+      builder: (context, snapshot) {
+        final all = snapshot.data ?? const <_CompanyStory>[];
+        final visible = _filter == 'All'
+            ? all
+            : all.where((story) => story.company.ticker == _filter).toList();
+        return RefreshIndicator(
+          onRefresh: _refresh,
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
             children: [
-              for (final position in state.positions)
-                PositionRow(position: position),
+              const Text(
+                'World',
+                style: TextStyle(
+                  fontSize: 34,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -1.2,
+                ),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'What is moving the companies behind your world.',
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 24),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    for (final label in const [
+                      'All',
+                      'AAPL',
+                      'NVDA',
+                      'META',
+                      'GOOGL',
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(label),
+                          selected: _filter == label,
+                          onSelected: (_) => setState(() => _filter = label),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (snapshot.connectionState == ConnectionState.waiting)
+                const Padding(
+                  padding: EdgeInsets.only(top: 80),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (visible.isEmpty)
+                _EmptyNews(onRetry: _refresh)
+              else ...[
+                _LeadStory(story: visible.first),
+                const SizedBox(height: 30),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Latest',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      '${visible.length} stories',
+                      style: const TextStyle(
+                        color: AppColors.muted,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                for (final story in visible.skip(1)) _StoryRow(story: story),
+              ],
+              const SizedBox(height: 22),
+              const Text(
+                'Coverage comes directly from official company newsrooms.',
+                style: TextStyle(color: AppColors.muted, fontSize: 10.5),
+              ),
             ],
           ),
-        const SizedBox(height: 22),
-        const Text(
-          'Everyday things.\nExtraordinary ownership.',
-          style: TextStyle(
-            fontSize: 23,
-            height: 1.15,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -.8,
+        );
+      },
+    ),
+  );
+}
+
+class _CompanyStory {
+  const _CompanyStory({required this.company, required this.article});
+  final Company company;
+  final NewsArticle article;
+}
+
+class _LeadStory extends StatelessWidget {
+  const _LeadStory({required this.story});
+  final _CompanyStory story;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: () => launchUrl(
+      Uri.parse(story.article.url),
+      mode: LaunchMode.externalApplication,
+    ),
+    borderRadius: BorderRadius.circular(24),
+    child: Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CompanyLogo(
+                ticker: story.company.ticker,
+                size: 28,
+                color: Colors.white,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                '${story.company.name} · ${story.company.ticker}',
+                style: const TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+              const Spacer(),
+              const Icon(Icons.north_east_rounded, size: 17),
+            ],
+          ),
+          const SizedBox(height: 34),
+          Text(
+            story.article.headline,
+            style: const TextStyle(
+              fontSize: 25,
+              height: 1.08,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -.7,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            '${story.article.source} · ${_ago(story.article.publishedAt)}',
+            style: const TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _StoryRow extends StatelessWidget {
+  const _StoryRow({required this.story});
+  final _CompanyStory story;
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: () => launchUrl(
+      Uri.parse(story.article.url),
+      mode: LaunchMode.externalApplication,
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 17),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 34,
+            child: CompanyLogo(
+              ticker: story.company.ticker,
+              size: 24,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  story.article.headline,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    height: 1.3,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 7),
+                Text(
+                  '${story.company.ticker} · ${story.article.source} · ${_ago(story.article.publishedAt)}',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 11),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          const Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
             color: AppColors.muted,
           ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _EmptyNews extends StatelessWidget {
+  const _EmptyNews({required this.onRetry});
+  final Future<void> Function() onRetry;
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 70),
+    child: Column(
+      children: [
+        const Icon(Icons.public_rounded, size: 40),
+        const SizedBox(height: 16),
+        const Text(
+          'The newsroom is quiet right now.',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
         ),
+        const SizedBox(height: 8),
+        const Text(
+          'Pull to refresh or try again.',
+          style: TextStyle(color: AppColors.muted),
+        ),
+        const SizedBox(height: 18),
+        TextButton(onPressed: onRetry, child: const Text('Try again')),
       ],
     ),
   );
+}
+
+String _ago(DateTime published) {
+  final elapsed = DateTime.now().difference(published);
+  if (elapsed.inMinutes < 60) return '${elapsed.inMinutes.clamp(0, 59)}m ago';
+  if (elapsed.inHours < 24) return '${elapsed.inHours}h ago';
+  return '${elapsed.inDays}d ago';
 }

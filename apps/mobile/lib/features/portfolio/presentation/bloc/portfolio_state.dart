@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:tickerless/features/portfolio/domain/entities/owned_position.dart';
+import 'package:tickerless/features/portfolio/domain/entities/portfolio_transaction.dart';
 
 abstract class PortfolioState extends Equatable {
   const PortfolioState();
@@ -13,9 +14,10 @@ class PortfolioInitial extends PortfolioState {
 }
 
 class PortfolioLoaded extends PortfolioState {
-  const PortfolioLoaded(this.positions);
+  const PortfolioLoaded(this.positions, {this.transactions = const []});
 
   final List<OwnedPosition> positions;
+  final List<PortfolioTransaction> transactions;
 
   double get total =>
       positions.fold(0, (sum, position) => sum + position.invested);
@@ -24,7 +26,7 @@ class PortfolioLoaded extends PortfolioState {
       positions.fold(0, (sum, position) => sum + position.sources.length);
 
   @override
-  List<Object?> get props => [positions];
+  List<Object?> get props => [positions, transactions];
 }
 
 class PortfolioError extends PortfolioState {

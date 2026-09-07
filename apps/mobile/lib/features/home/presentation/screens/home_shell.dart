@@ -14,7 +14,7 @@ class HomeShell extends StatelessWidget {
   static const _destinations = [
     (icon: Icons.grid_view_rounded, label: 'Discover'),
     (icon: Icons.public_rounded, label: 'World'),
-    (icon: Icons.bolt_rounded, label: 'Activity'),
+    (icon: Icons.account_balance_wallet_rounded, label: 'Wallet'),
   ];
 
   @override

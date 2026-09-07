@@ -74,7 +74,7 @@ class AppDependencies {
                localDataSource: InMemoryPortfolioDataSource(),
              ),
          quoteRepository: quoteRepository ?? const DemoQuoteRepository(),
-         newsRepository: newsRepository ?? const EmptyNewsRepository(),
+         newsRepository: newsRepository ?? OfficialNewsRepository(),
        );
 
   AppDependencies._resolved({

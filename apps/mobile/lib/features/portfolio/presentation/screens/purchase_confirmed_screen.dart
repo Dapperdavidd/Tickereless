@@ -59,8 +59,8 @@ class PurchaseConfirmedScreen extends StatelessWidget {
             ),
             const Spacer(),
             FilledButton(
-              onPressed: () => context.go(AppRoutes.world),
-              child: const Text('View in Your World'),
+              onPressed: () => context.go(AppRoutes.activity),
+              child: const Text('View in Wallet'),
             ),
             const SizedBox(height: 10),
             OutlinedButton(
