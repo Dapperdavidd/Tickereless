@@ -33,9 +33,12 @@ void main() {
   testWidgets('guest entry opens the Discover experience', (tester) async {
     await enterAsGuest(tester);
 
-    expect(find.text('What caught\nyour attention\ntoday?'), findsOneWidget);
-    expect(find.text('Search anything...'), findsOneWidget);
-    expect(find.text('Discover'), findsOneWidget);
+    // Discover is a grid of companies under one line of chrome, so the
+    // landmarks are the section bar and the affordances, not a hero heading.
+    expect(find.text('Featured'), findsOneWidget);
+    expect(find.text('NVIDIA'), findsOneWidget);
+    expect(find.byTooltip('Search'), findsOneWidget);
+    expect(find.byTooltip('Open Lens'), findsOneWidget);
   });
 
   testWidgets('profile lives behind the top avatar, not bottom navigation', (
@@ -117,7 +120,7 @@ void main() {
   ) async {
     await signIn(tester);
 
-    expect(find.text('What caught\nyour attention\ntoday?'), findsOneWidget);
+    expect(find.text('Featured'), findsOneWidget);
 
     await tester.tap(find.byTooltip('Open profile'));
     await tester.pumpAndSettle();
@@ -131,13 +134,15 @@ void main() {
   ) async {
     await signIn(tester);
 
-    await tester.tap(find.text('Search'));
+    await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
     expect(find.text('Meta Platforms'), findsOneWidget);
 
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();
-    expect(find.text('Company Passport'), findsOneWidget);
+    // The passport leads with the price and the chart, not a page title.
+    expect(find.text(r'$500.00'), findsOneWidget);
+    expect(find.text('Demo series · not market data'), findsOneWidget);
 
     final ownButton = find.text('Own Meta Platforms');
     await tester.ensureVisible(ownButton);
@@ -156,7 +161,7 @@ void main() {
   testWidgets('a purchase lands in Your World', (tester) async {
     await signIn(tester);
 
-    await tester.tap(find.text('Search'));
+    await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();
@@ -170,11 +175,10 @@ void main() {
 
     expect(find.text('Your World'), findsOneWidget);
     // $27 seeded plus the $5 purchase, and Meta keeps both discovery sources.
-    expect(find.textContaining(r'$32.00'), findsOneWidget);
-    expect(
-      find.textContaining('Discovered via Instagram · Search'),
-      findsOneWidget,
-    );
+    // The total shows twice: the World heading, and Discover's section bar,
+    // which the shell keeps alive in the other branch.
+    expect(find.textContaining(r'$32.00'), findsWidgets);
+    expect(find.textContaining('via Instagram · Search'), findsOneWidget);
   });
 
   testWidgets('guest discovery stops at the purchase sign-in gate', (
@@ -182,7 +186,7 @@ void main() {
   ) async {
     await enterAsGuest(tester);
 
-    await tester.tap(find.text('Search'));
+    await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();

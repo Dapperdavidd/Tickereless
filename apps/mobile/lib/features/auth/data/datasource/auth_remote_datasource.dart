@@ -24,11 +24,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
   @override
   Future<AuthSessionModel> googleLogin(String idToken) async {
-    final decoded = await _client.postJson(
-      '/v1/auth/google',
-      {'id_token': idToken},
-      fallbackError: 'Google sign-in failed',
-    );
+    final decoded = await _client.postJson('/v1/auth/google', {
+      'id_token': idToken,
+    }, fallbackError: 'Google sign-in failed');
     return AuthSessionModel.fromJson(decoded);
   }
 
@@ -37,11 +35,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String email,
     String password,
   ) async {
-    final decoded = await _client.postJson(
-      path,
-      {'email': email.trim(), 'password': password},
-      fallbackError: 'Email authentication failed',
-    );
+    final decoded = await _client.postJson(path, {
+      'email': email.trim(),
+      'password': password,
+    }, fallbackError: 'Email authentication failed');
     return AuthSessionModel.fromJson(decoded);
   }
 }

@@ -3,7 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
-import 'package:tickerless/core/widgets/glass_card.dart';
+import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/core/widgets/summary_row.dart';
 
 /// The receipt. Both ways out lead back into the app, not back through the
@@ -47,17 +47,15 @@ class PurchaseConfirmedScreen extends StatelessWidget {
               style: TextStyle(color: AppColors.muted),
             ),
             const SizedBox(height: 28),
-            GlassCard(
-              child: Column(
-                children: [
-                  SummaryRow(label: 'Discovered via', value: args.source),
-                  const SizedBox(height: 14),
-                  const SummaryRow(
-                    label: 'Transaction',
-                    value: 'View on BaseScan ↗',
-                  ),
-                ],
-              ),
+            HairlineList(
+              gap: 28,
+              children: [
+                SummaryRow(label: 'Discovered via', value: args.source),
+                const SummaryRow(
+                  label: 'Transaction',
+                  value: 'View on BaseScan ↗',
+                ),
+              ],
             ),
             const Spacer(),
             FilledButton(

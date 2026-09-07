@@ -31,7 +31,9 @@ class LensBloc extends Bloc<LensEvent, LensState> {
     emit(const LensScanning());
     try {
       final matches = await recognize();
-      emit(matches.isEmpty ? const LensUnmatched() : LensMatched(matches.first));
+      emit(
+        matches.isEmpty ? const LensUnmatched() : LensMatched(matches.first),
+      );
     } on Failure catch (failure) {
       emit(LensFailed(failure.message));
     }

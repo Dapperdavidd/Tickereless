@@ -36,7 +36,9 @@ class PlatformFrameAnalysisDataSource implements FrameAnalysisDataSource {
             .toList(),
       );
     } on PlatformException catch (error) {
-      throw ImageAnalysisException(error.message ?? 'Could not read the frame.');
+      throw ImageAnalysisException(
+        error.message ?? 'Could not read the frame.',
+      );
     }
   }
 }

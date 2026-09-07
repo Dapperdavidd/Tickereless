@@ -5,8 +5,7 @@ import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/core/widgets/flow_scaffold.dart';
-import 'package:tickerless/core/widgets/glass_card.dart';
-import 'package:tickerless/core/widgets/pill.dart';
+import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/features/discovery/data/registry/demo_companies.dart';
 import 'package:tickerless/features/discovery/domain/entities/company_match.dart';
 import 'package:tickerless/features/discovery/domain/entities/discovery_source.dart';
@@ -70,19 +69,9 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          const Wrap(
-            spacing: 8,
-            children: [
-              Pill('All'),
-              Pill('Companies'),
-              Pill('Products'),
-              Pill('Ideas'),
-            ],
-          ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           const _ProductHint(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 24),
           if (state is SearchLoading)
             const Center(child: CircularProgressIndicator()),
           if (state is SearchFailed)
@@ -94,16 +83,20 @@ class _SearchScreenState extends State<SearchScreen> {
               ),
             ),
           if (state is SearchLoaded && state.matches.isEmpty)
-            const GlassCard(
-              child: Text('Nothing matched that. Try describing the thing itself.'),
+            const Text(
+              'Nothing matched that. Try describing the thing itself.',
+              style: TextStyle(color: AppColors.muted, height: 1.5),
             ),
-          ...switch (state) {
-            SearchLoaded(:final matches, :final query) => matches.map(
-              (match) => _result(match, query),
-            ),
-            _ => [_result(_example, _controller.text.trim())],
-          },
-          const SizedBox(height: 22),
+          HairlineList(
+            gap: 30,
+            children: switch (state) {
+              SearchLoaded(:final matches, :final query) => [
+                for (final match in matches) _result(match, query),
+              ],
+              _ => [_result(_example, _controller.text.trim())],
+            },
+          ),
+          const SizedBox(height: 30),
           const Text(
             'Related results',
             style: TextStyle(fontWeight: FontWeight.w700),
@@ -129,43 +122,39 @@ class _SearchScreenState extends State<SearchScreen> {
     ),
   );
 
-  Widget _result(CompanyMatch match, String query) => Padding(
-    padding: const EdgeInsets.only(bottom: 12),
-    child: CompanyResultCard(
-      match: match,
-      onTap: () => _openPassport(match, query),
-    ),
-  );
+  Widget _result(CompanyMatch match, String query) =>
+      CompanyResultCard(match: match, onTap: () => _openPassport(match, query));
 }
 
 class _ProductHint extends StatelessWidget {
   const _ProductHint();
 
   @override
-  Widget build(BuildContext context) => const GlassCard(
-    padding: EdgeInsets.all(12),
-    child: Row(
-      children: [
-        CircleAvatar(
-          radius: 22,
-          backgroundColor: Color(0xFFE94592),
-          child: Icon(Icons.camera_alt_outlined, color: Colors.white),
+  Widget build(BuildContext context) => const Row(
+    children: [
+      CircleAvatar(
+        radius: 21,
+        backgroundColor: Color(0xFFE94592),
+        child: Icon(Icons.camera_alt_outlined, color: Colors.white, size: 21),
+      ),
+      SizedBox(width: 13),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Instagram',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+            SizedBox(height: 2),
+            Text(
+              'A product of Meta Platforms',
+              style: TextStyle(color: AppColors.blue, fontSize: 11.5),
+            ),
+          ],
         ),
-        SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Instagram', style: TextStyle(fontWeight: FontWeight.w700)),
-              Text(
-                'A product of Meta Platforms',
-                style: TextStyle(color: AppColors.blue, fontSize: 11),
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
+      ),
+    ],
   );
 }
 

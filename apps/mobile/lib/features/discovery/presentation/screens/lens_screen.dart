@@ -246,10 +246,7 @@ class _ShutterButton extends StatelessWidget {
         border: Border.all(color: Colors.black, width: 5),
       ),
       child: busy
-          ? const CircularProgressIndicator(
-              color: Colors.black,
-              strokeWidth: 2,
-            )
+          ? const CircularProgressIndicator(color: Colors.black, strokeWidth: 2)
           : retry
           ? const Icon(Icons.refresh, color: Colors.black)
           : null,

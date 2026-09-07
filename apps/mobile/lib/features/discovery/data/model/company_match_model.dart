@@ -15,7 +15,8 @@ class CompanyMatchModel extends CompanyMatch {
         company,
         asset: (json['asset'] ?? company['asset']) as Map<String, dynamic>?,
       ),
-      reason: json['reason']?.toString() ?? 'Matched by the Tickerless resolver',
+      reason:
+          json['reason']?.toString() ?? 'Matched by the Tickerless resolver',
       confidence: (json['confidence'] as num?)?.toDouble() ?? 0,
     );
   }

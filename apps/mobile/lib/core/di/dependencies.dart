@@ -16,6 +16,12 @@ import 'package:tickerless/features/discovery/domain/usecases/recognize_frame.da
 import 'package:tickerless/features/discovery/domain/usecases/recognize_text.dart';
 import 'package:tickerless/features/discovery/domain/usecases/resolve_link.dart';
 import 'package:tickerless/features/discovery/domain/usecases/search_companies.dart';
+import 'package:tickerless/features/market/data/repositories/news_repository_impl.dart';
+import 'package:tickerless/features/market/data/repositories/quote_repository_impl.dart';
+import 'package:tickerless/features/market/domain/repositories/news_repository.dart';
+import 'package:tickerless/features/market/domain/repositories/quote_repository.dart';
+import 'package:tickerless/features/market/domain/usecases/get_company_news.dart';
+import 'package:tickerless/features/market/domain/usecases/get_price_series.dart';
 import 'package:tickerless/features/portfolio/data/datasource/portfolio_local_datasource.dart';
 import 'package:tickerless/features/portfolio/data/repositories/portfolio_repository_impl.dart';
 import 'package:tickerless/features/portfolio/domain/repositories/portfolio_repository.dart';
@@ -40,6 +46,8 @@ class AppDependencies {
     WalletRepository? walletRepository,
     DiscoveryRepository? discoveryRepository,
     PortfolioRepository? portfolioRepository,
+    QuoteRepository? quoteRepository,
+    NewsRepository? newsRepository,
   }) : this._resolved(
          apiClient: apiClient ??= ApiClient(),
          authRepository:
@@ -51,9 +59,7 @@ class AppDependencies {
              ),
          walletRepository:
              walletRepository ??
-             WalletRepositoryImpl(
-               localDataSource: WalletLocalDataSourceImpl(),
-             ),
+             WalletRepositoryImpl(localDataSource: WalletLocalDataSourceImpl()),
          discoveryRepository:
              discoveryRepository ??
              DiscoveryRepositoryImpl(
@@ -67,6 +73,8 @@ class AppDependencies {
              PortfolioRepositoryImpl(
                localDataSource: InMemoryPortfolioDataSource(),
              ),
+         quoteRepository: quoteRepository ?? const DemoQuoteRepository(),
+         newsRepository: newsRepository ?? const EmptyNewsRepository(),
        );
 
   AppDependencies._resolved({
@@ -75,16 +83,14 @@ class AppDependencies {
     required WalletRepository walletRepository,
     required DiscoveryRepository discoveryRepository,
     required PortfolioRepository portfolioRepository,
+    required QuoteRepository quoteRepository,
+    required NewsRepository newsRepository,
   }) : signInWithEmail = SignInWithEmailUseCase(repository: authRepository),
-       registerWithEmail = RegisterWithEmailUseCase(
-         repository: authRepository,
-       ),
+       registerWithEmail = RegisterWithEmailUseCase(repository: authRepository),
        signInWithGoogle = SignInWithGoogleUseCase(repository: authRepository),
        signOut = SignOutUseCase(repository: authRepository),
        ensureWallet = EnsureWalletUseCase(repository: walletRepository),
-       revealPrivateKey = RevealPrivateKeyUseCase(
-         repository: walletRepository,
-       ),
+       revealPrivateKey = RevealPrivateKeyUseCase(repository: walletRepository),
        searchCompanies = SearchCompaniesUseCase(
          repository: discoveryRepository,
        ),
@@ -92,7 +98,9 @@ class AppDependencies {
        recognizeFrame = RecognizeFrameUseCase(repository: discoveryRepository),
        recognizeText = RecognizeTextUseCase(repository: discoveryRepository),
        getPositions = GetPositionsUseCase(repository: portfolioRepository),
-       recordPurchase = RecordPurchaseUseCase(repository: portfolioRepository);
+       recordPurchase = RecordPurchaseUseCase(repository: portfolioRepository),
+       getPriceSeries = GetPriceSeriesUseCase(repository: quoteRepository),
+       getCompanyNews = GetCompanyNewsUseCase(repository: newsRepository);
 
   final ApiClient apiClient;
 
@@ -111,4 +119,7 @@ class AppDependencies {
 
   final GetPositionsUseCase getPositions;
   final RecordPurchaseUseCase recordPurchase;
+
+  final GetPriceSeriesUseCase getPriceSeries;
+  final GetCompanyNewsUseCase getCompanyNews;
 }

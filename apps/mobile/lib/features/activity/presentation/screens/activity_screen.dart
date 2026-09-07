@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:tickerless/core/theme/app_theme.dart';
+import 'package:tickerless/core/widgets/filter_chips.dart';
+import 'package:tickerless/core/widgets/hairline_list.dart';
+import 'package:tickerless/core/widgets/section_label.dart';
 import 'package:tickerless/features/activity/domain/entities/discovery_event.dart';
-import 'package:tickerless/features/activity/presentation/widgets/activity_filters.dart';
 import 'package:tickerless/features/activity/presentation/widgets/history_row.dart';
 import 'package:tickerless/features/discovery/domain/entities/discovery_source.dart';
 import 'package:tickerless/features/portfolio/presentation/widgets/tab_list.dart';
@@ -18,6 +19,8 @@ class ActivityScreen extends StatefulWidget {
 }
 
 class _ActivityScreenState extends State<ActivityScreen> {
+  static const _filters = ['All', 'Lens', 'Link', 'Search'];
+
   static const _history = [
     DiscoveryEvent(
       title: 'iPhone',
@@ -67,36 +70,29 @@ class _ActivityScreenState extends State<ActivityScreen> {
       title: 'Discovery History',
       subtitle: 'Everything that caught your attention.',
       children: [
-        ActivityFilters(
+        FilterChips(
+          options: _filters,
           selected: _filter,
           onSelected: (value) => setState(() => _filter = value),
         ),
+        const SizedBox(height: 8),
         for (final day in {for (final event in visible) event.day}) ...[
-          _SectionLabel(day),
-          ...visible
-              .where((event) => event.day == day)
-              .map((event) => HistoryRow(event: event)),
+          SectionLabel(day),
+          const SizedBox(height: 14),
+          HairlineList(
+            children: [
+              for (final event in visible.where((event) => event.day == day))
+                HistoryRow(event: event),
+            ],
+          ),
+          const SizedBox(height: 12),
         ],
+        if (visible.isEmpty)
+          const Text(
+            'Nothing discovered this way yet.',
+            style: TextStyle(color: Color(0xFF8DA1AD)),
+          ),
       ],
     );
   }
-}
-
-class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.label);
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 8),
-    child: Text(
-      label,
-      style: const TextStyle(
-        color: AppColors.muted,
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-      ),
-    ),
-  );
 }

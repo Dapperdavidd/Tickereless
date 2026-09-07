@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
-import 'package:tickerless/core/widgets/glass_card.dart';
+import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/features/discovery/data/registry/demo_companies.dart';
 import 'package:tickerless/features/discovery/domain/entities/company_match.dart';
 import 'package:tickerless/features/discovery/domain/entities/discovery_source.dart';
@@ -77,13 +77,13 @@ class _LinkScreenState extends State<LinkScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            GlassCard(
+            GestureDetector(
               onTap: analyzing ? null : _analyze,
-              padding: const EdgeInsets.all(12),
+              behavior: HitTestBehavior.opaque,
               child: const Row(
                 children: [
                   _PagePreviewThumb(),
-                  SizedBox(width: 12),
+                  SizedBox(width: 13),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -92,7 +92,7 @@ class _LinkScreenState extends State<LinkScreen> {
                           'NVIDIA',
                           style: TextStyle(
                             color: AppColors.muted,
-                            fontSize: 10,
+                            fontSize: 10.5,
                           ),
                         ),
                         SizedBox(height: 4),
@@ -100,13 +100,18 @@ class _LinkScreenState extends State<LinkScreen> {
                           'The next generation of AI computing',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
-                            height: 1.15,
+                            height: 1.2,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  Icon(Icons.arrow_forward, size: 18),
+                  SizedBox(width: 10),
+                  Icon(
+                    Icons.north_east_rounded,
+                    size: 16,
+                    color: AppColors.muted,
+                  ),
                 ],
               ),
             ),
@@ -130,29 +135,28 @@ class _LinkScreenState extends State<LinkScreen> {
             ),
             const SizedBox(height: 10),
             if (!analyzing && matches.isEmpty)
-              const GlassCard(
-                child: Text(
-                  'No supported companies were detected on this page.',
-                ),
+              const Text(
+                'No supported companies were detected on this page.',
+                style: TextStyle(color: AppColors.muted, height: 1.5),
               ),
-            ...matches.map(
-              (match) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: DetectedCompanyRow(
-                  match: match,
-                  onTap: () => context.push(
-                    AppRoutes.passport,
-                    extra: PassportArgs(
-                      company: match.company,
-                      source: DiscoverySource.link.describe(
-                        _controller.text.trim(),
+            HairlineList(
+              children: [
+                for (final match in matches)
+                  DetectedCompanyRow(
+                    match: match,
+                    onTap: () => context.push(
+                      AppRoutes.passport,
+                      extra: PassportArgs(
+                        company: match.company,
+                        source: DiscoverySource.link.describe(
+                          _controller.text.trim(),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 24),
             const _ResolverFootnote(),
           ],
         );
@@ -169,10 +173,10 @@ class _PagePreviewThumb extends StatelessWidget {
     width: 64,
     height: 64,
     decoration: BoxDecoration(
-      color: const Color(0xFF111C23),
-      borderRadius: BorderRadius.circular(12),
+      color: const Color(0xFF9BFF00).withValues(alpha: .13),
+      borderRadius: BorderRadius.circular(14),
     ),
-    child: const Icon(Icons.memory, color: Color(0xFF9BFF00), size: 34),
+    child: const Icon(Icons.memory, color: Color(0xFF9BFF00), size: 30),
   );
 }
 
