@@ -38,6 +38,7 @@ dependencies:
   camera: ^0.12.1
   google_sign_in: ^7.2.0
   flutter_secure_storage: ^11.0.0
+  web3dart: ^3.0.3
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -57,6 +57,7 @@ void main() {
     final session = await api.googleLogin('signed-google-token');
     expect(session.accessToken, 'tickerless-session');
     expect(session.email, 'owner@example.com');
+    expect(session.userId, '00000000-0000-0000-0000-000000000001');
   });
 
   test('email login exchanges credentials for a backend session', () async {
@@ -80,6 +81,7 @@ void main() {
     );
     expect(session.accessToken, 'email-session');
     expect(session.email, 'owner@example.com');
+    expect(session.userId, '00000000-0000-0000-0000-000000000001');
   });
 
   test('email registration surfaces backend validation errors', () async {

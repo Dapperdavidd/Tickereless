@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tickerless/src/app.dart';
 import 'package:tickerless/src/services/api_client.dart';
+import 'package:tickerless/src/services/wallet_service.dart';
 import 'package:tickerless/src/state/auth_state.dart';
 
 void main() {
+  setUp(() => walletService = WalletService(store: _MemorySecretStore()));
   tearDown(authState.signOut);
 
   testWidgets('guest entry opens the Discover experience', (tester) async {
@@ -18,6 +20,21 @@ void main() {
     expect(find.text('What caught\nyour attention\ntoday?'), findsOneWidget);
     expect(find.text('Search anything...'), findsOneWidget);
     expect(find.text('Discover'), findsOneWidget);
+  });
+
+  testWidgets('profile lives behind the top avatar, not bottom navigation', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const TickerlessApp());
+    await tester.tap(find.text('Continue as guest'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('You'), findsNothing);
+    expect(find.byTooltip('Open profile'), findsOneWidget);
+    await tester.tap(find.byTooltip('Open profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Guest mode'), findsOneWidget);
   });
 
   testWidgets('authentication choices remain visible', (tester) async {
@@ -86,10 +103,11 @@ void main() {
     await tester.pumpWidget(const TickerlessApp());
     await tester.tap(find.text('Continue as guest'));
     await tester.pumpAndSettle();
-    authState.authenticate(
+    await authState.authenticate(
       const AuthSession(
         accessToken: 'test-session',
         email: 'owner@example.com',
+        userId: 'widget-test-owner',
       ),
     );
 
@@ -132,4 +150,14 @@ void main() {
     expect(find.text('Sign in to own a piece'), findsOneWidget);
     expect(find.text('Review Purchase'), findsNothing);
   });
+}
+
+class _MemorySecretStore implements WalletSecretStore {
+  final values = <String, String>{};
+
+  @override
+  Future<String?> read(String key) async => values[key];
+
+  @override
+  Future<void> write(String key, String value) async => values[key] = value;
 }

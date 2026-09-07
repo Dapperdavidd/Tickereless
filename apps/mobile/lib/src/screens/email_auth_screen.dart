@@ -46,7 +46,7 @@ class _EmailAuthScreenState extends State<EmailAuthScreen> {
               _emailController.text,
               _passwordController.text,
             );
-      authState.authenticate(session);
+      await authState.authenticate(session);
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute<void>(builder: (_) => const HomeShell()),

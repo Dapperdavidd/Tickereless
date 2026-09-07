@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/space_orb.dart';
 import '../state/app_store.dart';
 import '../state/auth_state.dart';
+import '../services/wallet_service.dart';
 import 'email_auth_screen.dart';
+import 'onboarding_screen.dart';
 
 class WorldScreen extends StatelessWidget {
   const WorldScreen({super.key});
@@ -129,30 +132,34 @@ class ProfileScreen extends StatelessWidget {
           ],
         );
       }
-      return const _TabList(
+      final address = authState.walletAddress;
+      return _TabList(
         title: 'You',
         subtitle: 'Your identity in the ownership layer.',
         children: [
           GlassCard(
             child: Row(
               children: [
-                SpaceOrb(size: 64),
-                SizedBox(width: 14),
+                const SpaceOrb(size: 64),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Explorer',
-                        style: TextStyle(
+                        authState.session?.email ?? 'Explorer',
+                        style: const TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(height: 3),
+                      const SizedBox(height: 3),
                       Text(
-                        'Authenticated profile',
-                        style: TextStyle(color: AppColors.muted, fontSize: 12),
+                        address == null ? 'Preparing wallet…' : _short(address),
+                        style: const TextStyle(
+                          color: AppColors.muted,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -160,16 +167,27 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
-          _Setting(icon: Icons.settings_outlined, label: 'Settings'),
           _Setting(
             icon: Icons.account_balance_wallet_outlined,
-            label: 'Connected Wallet',
+            label: 'Your Wallet',
+            detail: address == null ? null : _short(address),
           ),
-          _Setting(icon: Icons.notifications_none, label: 'Notifications'),
-          _Setting(icon: Icons.dark_mode_outlined, label: 'Appearance · Dark'),
-          _Setting(icon: Icons.help_outline, label: 'Help & Support'),
-          _Setting(icon: Icons.info_outline, label: 'About Tickerless'),
-          GlassCard(
+          _Setting(
+            icon: Icons.key_outlined,
+            label: 'View private key',
+            onTap: () => _confirmPrivateKeyReveal(context),
+          ),
+          const _Setting(
+            icon: Icons.notifications_none,
+            label: 'Notifications',
+          ),
+          const _Setting(
+            icon: Icons.dark_mode_outlined,
+            label: 'Appearance · Dark',
+          ),
+          const _Setting(icon: Icons.help_outline, label: 'Help & Support'),
+          const _Setting(icon: Icons.info_outline, label: 'About Tickerless'),
+          const GlassCard(
             child: Row(
               children: [
                 Icon(Icons.check_circle, color: AppColors.blue),
@@ -181,11 +199,67 @@ class ProfileScreen extends StatelessWidget {
               ],
             ),
           ),
-          _SignOutButton(),
+          const _SignOutButton(),
         ],
       );
     },
   );
+
+  static String _short(String address) =>
+      '${address.substring(0, 6)}…${address.substring(address.length - 4)}';
+
+  Future<void> _confirmPrivateKeyReveal(BuildContext context) async {
+    final userId = authState.session?.userId;
+    if (userId == null) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Never share your private key'),
+        content: const Text(
+          'Anyone with this key can control your wallet and its assets. '
+          'Tickerless support will never ask for it.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('I understand'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !context.mounted) return;
+    final privateKey = await walletService.revealPrivateKey(userId);
+    if (!context.mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Private key'),
+        content: SelectableText(privateKey),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: privateKey));
+              if (dialogContext.mounted) Navigator.pop(dialogContext);
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Private key copied')),
+                );
+              }
+            },
+            child: const Text('Copy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _TabList extends StatelessWidget {
@@ -362,21 +436,38 @@ class _SectionLabel extends StatelessWidget {
 class _SignOutButton extends StatelessWidget {
   const _SignOutButton();
   @override
-  Widget build(BuildContext context) =>
-      OutlinedButton(onPressed: () {}, child: const Text('Sign Out'));
+  Widget build(BuildContext context) => OutlinedButton(
+    onPressed: () {
+      authState.signOut();
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const OnboardingScreen()),
+        (_) => false,
+      );
+    },
+    child: const Text('Sign Out'),
+  );
 }
 
 class _Setting extends StatelessWidget {
-  const _Setting({required this.icon, required this.label});
+  const _Setting({
+    required this.icon,
+    required this.label,
+    this.detail,
+    this.onTap,
+  });
   final IconData icon;
   final String label;
+  final String? detail;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => GlassCard(
     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+    onTap: onTap,
     child: ListTile(
       contentPadding: EdgeInsets.zero,
       leading: Icon(icon),
       title: Text(label),
+      subtitle: detail == null ? null : Text(detail!),
       trailing: const Icon(Icons.chevron_right),
     ),
   );

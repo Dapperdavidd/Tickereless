@@ -19,16 +19,18 @@ class HomeShell extends StatefulWidget {
 class _HomeShellState extends State<HomeShell> {
   int _index = 0;
 
-  static const _pages = [
-    _DiscoverHome(),
-    WorldScreen(),
-    ActivityScreen(),
-    ProfileScreen(),
-  ];
-
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: IndexedStack(index: _index, children: _pages),
+    body: IndexedStack(
+      index: _index,
+      children: [
+        _DiscoverHome(
+          onProfileTap: () => openScreen(context, const ProfileScreen()),
+        ),
+        const WorldScreen(),
+        const ActivityScreen(),
+      ],
+    ),
     bottomNavigationBar: NavigationBar(
       selectedIndex: _index,
       onDestinationSelected: (value) => setState(() => _index = value),
@@ -48,31 +50,28 @@ class _HomeShellState extends State<HomeShell> {
           selectedIcon: Icon(Icons.chat_bubble),
           label: 'Activity',
         ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline),
-          selectedIcon: Icon(Icons.person),
-          label: 'You',
-        ),
       ],
     ),
   );
 }
 
 class _DiscoverHome extends StatelessWidget {
-  const _DiscoverHome();
+  const _DiscoverHome({required this.onProfileTap});
+  final VoidCallback onProfileTap;
 
   @override
   Widget build(BuildContext context) => SafeArea(
     child: ListView(
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       children: [
-        const Row(
+        Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            TickerlessWordmark(compact: true),
-            CircleAvatar(
-              backgroundColor: AppColors.surfaceRaised,
-              child: Icon(Icons.person_outline),
+            const TickerlessWordmark(compact: true),
+            IconButton.filledTonal(
+              tooltip: 'Open profile',
+              onPressed: onProfileTap,
+              icon: const Icon(Icons.person_outline),
             ),
           ],
         ),

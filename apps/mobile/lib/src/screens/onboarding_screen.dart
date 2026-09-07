@@ -74,7 +74,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     setState(() => googleBusy = true);
     try {
       final session = await googleAuth.signIn();
-      authState.authenticate(session);
+      await authState.authenticate(session);
       if (mounted) _enterApp();
     } catch (error) {
       if (mounted) {

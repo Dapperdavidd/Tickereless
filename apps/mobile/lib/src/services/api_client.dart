@@ -110,18 +110,24 @@ class TickerlessApi {
 }
 
 class AuthSession {
-  const AuthSession({required this.accessToken, required this.email});
+  const AuthSession({
+    required this.accessToken,
+    required this.email,
+    required this.userId,
+  });
 
   factory AuthSession.fromJson(Map<String, dynamic> json) {
     final user = json['user'] as Map<String, dynamic>;
     return AuthSession(
       accessToken: json['access_token'].toString(),
       email: user['email'].toString(),
+      userId: user['id'].toString(),
     );
   }
 
   final String accessToken;
   final String email;
+  final String userId;
 }
 
 class CompanyMatch {
