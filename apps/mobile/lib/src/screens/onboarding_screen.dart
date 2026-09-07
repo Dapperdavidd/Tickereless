@@ -33,28 +33,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   void _scheduleAutoplay() {
     _autoplay?.cancel();
-    _autoplay = Timer(const Duration(seconds: 5), _advancePage);
+    _autoplay = Timer(const Duration(milliseconds: 3300), _advancePage);
   }
 
   Future<void> _advancePage() async {
     if (!mounted || !controller.hasClients) return;
-    if (page < _pageCount - 1) {
-      await controller.animateToPage(
-        page + 1,
-        duration: const Duration(milliseconds: 1150),
-        curve: Curves.easeInOutCubic,
-      );
-      return;
-    }
     await controller.animateToPage(
-      1,
-      duration: const Duration(milliseconds: 680),
-      curve: Curves.easeInOutCubic,
-    );
-    if (!mounted) return;
-    await controller.animateToPage(
-      0,
-      duration: const Duration(milliseconds: 680),
+      (page + 1) % _pageCount,
+      duration: Duration(milliseconds: page == _pageCount - 1 ? 900 : 760),
       curve: Curves.easeInOutCubic,
     );
   }
@@ -118,7 +104,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       builder: (context, constraints) => Stack(
         fit: StackFit.expand,
         children: [
-          _StarField(controller: controller),
+          _StarField(
+            controller: controller,
+            viewportWidth: constraints.maxWidth,
+          ),
           _EarthPanorama(
             controller: controller,
             viewportWidth: constraints.maxWidth,
@@ -163,7 +152,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 ),
                 _Dots(page: page),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
+                  padding: const EdgeInsets.fromLTRB(22, 16, 22, 8),
                   child: _AuthActions(
                     onEmail: _openEmail,
                     onGoogle: googleBusy
@@ -173,17 +162,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     googleBusy: googleBusy,
                   ),
                 ),
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 14),
-                  child: Text(
-                    'Real companies. Onchain. A more open world.',
-                    style: TextStyle(
-                      color: Color(0xFF71808A),
-                      fontSize: 10,
-                      letterSpacing: .15,
-                    ),
-                  ),
-                ),
+                const _ConsentText(),
               ],
             ),
           ),
@@ -219,24 +198,27 @@ class _EarthPanorama extends StatelessWidget {
         width: viewportWidth * _pageCount,
         child: Align(
           alignment: Alignment.bottomCenter,
-          child: ShaderMask(
-            blendMode: BlendMode.dstIn,
-            shaderCallback: (bounds) => const LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Colors.transparent,
-                Colors.transparent,
-                Colors.white,
-                Colors.white,
-              ],
-              stops: [0, .2, .42, 1],
-            ).createShader(bounds),
-            child: Image.asset(
-              'assets/images/earth-journey-v4.png',
-              width: viewportWidth * _pageCount,
-              fit: BoxFit.fitWidth,
-              filterQuality: FilterQuality.high,
+          child: Transform.translate(
+            offset: const Offset(0, -4),
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  Colors.transparent,
+                  Colors.transparent,
+                  Colors.white,
+                  Colors.white,
+                ],
+                stops: [0, .2, .42, 1],
+              ).createShader(bounds),
+              child: Image.asset(
+                'assets/images/earth-journey-v4.png',
+                width: viewportWidth * _pageCount,
+                fit: BoxFit.fitWidth,
+                filterQuality: FilterQuality.high,
+              ),
             ),
           ),
         ),
@@ -246,9 +228,10 @@ class _EarthPanorama extends StatelessWidget {
 }
 
 class _StarField extends StatelessWidget {
-  const _StarField({required this.controller});
+  const _StarField({required this.controller, required this.viewportWidth});
 
   final PageController controller;
+  final double viewportWidth;
 
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
@@ -258,12 +241,20 @@ class _StarField extends StatelessWidget {
           ? (controller.page ?? controller.initialPage.toDouble())
           : controller.initialPage.toDouble();
       return Transform.translate(
-        offset: Offset(-position * 16, 0),
+        offset: Offset(-position * viewportWidth * .84, 0),
         child: child,
       );
     },
-    child: const RepaintBoundary(
-      child: CustomPaint(painter: _StarFieldPainter()),
+    child: OverflowBox(
+      alignment: Alignment.centerLeft,
+      maxWidth: viewportWidth * _pageCount,
+      minWidth: viewportWidth * _pageCount,
+      child: SizedBox(
+        width: viewportWidth * _pageCount,
+        child: const RepaintBoundary(
+          child: CustomPaint(painter: _StarFieldPainter()),
+        ),
+      ),
     ),
   );
 }
@@ -274,8 +265,8 @@ class _StarFieldPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final random = math.Random(1709);
-    for (var index = 0; index < 72; index++) {
-      final x = random.nextDouble() * (size.width + 72);
+    for (var index = 0; index < 186; index++) {
+      final x = random.nextDouble() * size.width;
       final y = 60 + random.nextDouble() * size.height * .68;
       final radius = .35 + random.nextDouble() * 1.05;
       final opacity = .18 + random.nextDouble() * .52;
@@ -440,19 +431,7 @@ class _DiscoveryMethod extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
     height: compact ? 46 : 58,
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    decoration: BoxDecoration(
-      color: Colors.black.withValues(alpha: .46),
-      border: Border.all(color: const Color(0xFF3B5260)),
-      borderRadius: BorderRadius.circular(18),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x33000000),
-          blurRadius: 18,
-          offset: Offset(0, 8),
-        ),
-      ],
-    ),
+    padding: const EdgeInsets.symmetric(horizontal: 4),
     child: Row(
       children: [
         SizedBox(
@@ -460,7 +439,8 @@ class _DiscoveryMethod extends StatelessWidget {
           height: 40,
           child: Icon(icon, size: 22, color: Colors.white),
         ),
-        const SizedBox(width: 10),
+        Container(width: 1, height: 30, color: const Color(0xFF30434E)),
+        const SizedBox(width: 14),
         Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -480,13 +460,38 @@ class _DiscoveryMethod extends StatelessWidget {
             ),
           ],
         ),
-        const Spacer(),
-        const Icon(
-          Icons.arrow_forward_rounded,
-          size: 15,
-          color: Color(0xFF6F838F),
-        ),
       ],
+    ),
+  );
+}
+
+class _ConsentText extends StatelessWidget {
+  const _ConsentText();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(28, 0, 28, 11),
+    child: Text.rich(
+      const TextSpan(
+        text: 'By continuing, you agree to our ',
+        children: [
+          TextSpan(
+            text: 'Terms & Conditions',
+            style: TextStyle(
+              color: Color(0xFFD7E3E9),
+              decoration: TextDecoration.underline,
+              decorationColor: Color(0xFFD7E3E9),
+            ),
+          ),
+          TextSpan(text: '.'),
+        ],
+      ),
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: Color(0xFF71808A),
+        fontSize: 10,
+        height: 1.35,
+      ),
     ),
   );
 }

@@ -52,8 +52,9 @@ void main() {
     await tester.pumpWidget(const TickerlessApp());
 
     expect(find.text('The world is\nthe stock market.'), findsOneWidget);
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pump(const Duration(milliseconds: 1200));
+    expect(find.textContaining('Terms & Conditions'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 3300));
+    await tester.pump(const Duration(milliseconds: 800));
 
     expect(find.text('Same world.\nMore owners.'), findsOneWidget);
     expect(find.text('Continue with Google'), findsOneWidget);
@@ -63,19 +64,18 @@ void main() {
     tester,
   ) async {
     await tester.pumpWidget(const TickerlessApp());
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pump(const Duration(milliseconds: 1200));
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump(const Duration(milliseconds: 3300));
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump(const Duration(milliseconds: 3300));
+    await tester.pump(const Duration(milliseconds: 800));
 
     expect(find.text('Turn attention\ninto ownership.'), findsOneWidget);
     expect(find.text('Scan anything'), findsOneWidget);
     expect(find.text('Search naturally'), findsOneWidget);
     expect(find.text('Paste a link'), findsOneWidget);
 
-    await tester.pump(const Duration(seconds: 5));
-    await tester.pump(const Duration(milliseconds: 700));
-    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 3300));
+    await tester.pump(const Duration(milliseconds: 900));
     await tester.pump(const Duration(milliseconds: 100));
     expect(find.text('The world is\nthe stock market.'), findsOneWidget);
   });
