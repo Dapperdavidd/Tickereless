@@ -32,21 +32,29 @@ class PassportBloc extends Bloc<PassportEvent, PassportState> {
     try {
       // Started together, awaited separately: the two are independent, and
       // this keeps both results typed.
-      final series = _getPriceSeries(
+      final series = await _getPriceSeries(
         ticker: ticker,
         anchorPrice: anchorPrice,
         range: state.range,
       );
-      final articles = _getCompanyNews(ticker);
+      var articles = state.articles;
+      try {
+        articles = await _getCompanyNews(ticker);
+      } catch (_) {
+        // A newsroom outage must not take down the company passport.
+      }
       emit(
-        state.copyWith(
-          series: await series,
-          articles: await articles,
-          isLoading: false,
-        ),
+        state.copyWith(series: series, articles: articles, isLoading: false),
       );
     } on Failure catch (failure) {
       emit(state.copyWith(isLoading: false, errorMessage: failure.message));
+    } catch (_) {
+      emit(
+        state.copyWith(
+          isLoading: false,
+          errorMessage: 'Company details are temporarily unavailable.',
+        ),
+      );
     }
   }
 

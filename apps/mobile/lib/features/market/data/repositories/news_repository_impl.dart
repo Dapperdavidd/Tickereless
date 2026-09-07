@@ -94,7 +94,7 @@ class OfficialNewsRepository implements NewsRepository {
     if (value == null) return DateTime.now();
     try {
       return HttpDate.parse(value);
-    } on FormatException {
+    } catch (_) {
       return DateTime.tryParse(value) ?? DateTime.now();
     }
   }
