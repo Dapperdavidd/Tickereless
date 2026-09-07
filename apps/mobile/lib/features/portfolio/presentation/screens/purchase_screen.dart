@@ -9,6 +9,8 @@ import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/core/widgets/summary_row.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_event.dart';
+import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 
 /// Choose an amount and turn a discovery into a position.
 class PurchaseScreen extends StatefulWidget {
@@ -24,6 +26,47 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
   static const _amounts = [1, 5, 10, 25];
 
   int _amount = 5;
+  bool _buying = false;
+  String? _error;
+
+  Future<void> _buy() async {
+    final session = context.read<AuthBloc>().state.session;
+    if (session == null) return;
+    setState(() {
+      _buying = true;
+      _error = null;
+    });
+    try {
+      final result = await context.read<ChainGateway>().buy(
+        userId: session.userId,
+        company: widget.args.company,
+        usdc: _amount.toDouble(),
+      );
+      if (!mounted) return;
+      context.read<PortfolioBloc>().add(
+        PurchaseRecorded(
+          company: widget.args.company,
+          invested: _amount.toDouble(),
+          tokens: result.tokens,
+          source: widget.args.source,
+        ),
+      );
+      context.push(
+        AppRoutes.receipt,
+        extra: ReceiptArgs(
+          company: widget.args.company,
+          invested: _amount.toDouble(),
+          tokens: result.tokens,
+          source: widget.args.source,
+          transactionHash: result.hash,
+        ),
+      );
+    } catch (error) {
+      if (mounted) setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _buying = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -40,7 +83,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
             style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700),
           ),
           const Text(
-            'Demo market price',
+            'Base Sepolia market price',
             style: TextStyle(color: AppColors.muted),
           ),
           const SizedBox(height: 28),
@@ -84,35 +127,21 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                 value: '${tokens.toStringAsFixed(4)} ${company.symbol}',
               ),
               const SummaryRow(label: 'Network', value: 'Base Sepolia'),
-              const SummaryRow(label: 'Asset type', value: 'Demo equity'),
+              const SummaryRow(label: 'Settlement', value: 'USDC'),
             ],
           ),
           const SizedBox(height: 24),
+          if (_error != null) ...[
+            Text(_error!, style: const TextStyle(color: AppColors.red)),
+            const SizedBox(height: 12),
+          ],
           FilledButton(
-            onPressed: () {
-              context.read<PortfolioBloc>().add(
-                PurchaseRecorded(
-                  company: company,
-                  invested: _amount.toDouble(),
-                  tokens: tokens,
-                  source: widget.args.source,
-                ),
-              );
-              context.push(
-                AppRoutes.receipt,
-                extra: ReceiptArgs(
-                  company: company,
-                  invested: _amount.toDouble(),
-                  tokens: tokens,
-                  source: widget.args.source,
-                ),
-              );
-            },
-            child: const Text('Review Purchase'),
+            onPressed: _buying ? null : _buy,
+            child: Text(_buying ? 'Confirming on Base…' : 'Buy with USDC'),
           ),
           const SizedBox(height: 12),
           const Text(
-            'Demo transaction using test assets. No real funds are required.',
+            'Uses testnet USDC and Base Sepolia ETH. Testnet assets have no monetary value.',
             textAlign: TextAlign.center,
             style: TextStyle(color: AppColors.muted, fontSize: 11),
           ),

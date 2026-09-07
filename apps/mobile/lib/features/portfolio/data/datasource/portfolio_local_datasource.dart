@@ -1,4 +1,3 @@
-import 'package:tickerless/features/discovery/data/registry/demo_companies.dart';
 import 'package:tickerless/features/discovery/domain/entities/company.dart';
 import 'package:tickerless/features/portfolio/domain/entities/owned_position.dart';
 
@@ -18,7 +17,7 @@ abstract interface class PortfolioLocalDataSource {
 
 class InMemoryPortfolioDataSource implements PortfolioLocalDataSource {
   InMemoryPortfolioDataSource({Map<String, OwnedPosition>? seed})
-    : _positions = seed ?? _demoSeed();
+    : _positions = seed ?? <String, OwnedPosition>{};
 
   final Map<String, OwnedPosition> _positions;
 
@@ -43,25 +42,4 @@ class InMemoryPortfolioDataSource implements PortfolioLocalDataSource {
         );
     return positions();
   }
-
-  static Map<String, OwnedPosition> _demoSeed() => {
-    'AAPL': OwnedPosition(
-      company: DemoCompanies.apple,
-      invested: 14,
-      tokens: 14 / DemoCompanies.apple.price,
-      sources: const ['iPhone · Lens'],
-    ),
-    'NVDA': OwnedPosition(
-      company: DemoCompanies.nvidia,
-      invested: 8,
-      tokens: 8 / DemoCompanies.nvidia.price,
-      sources: const ['AI article · Link'],
-    ),
-    'META': const OwnedPosition(
-      company: DemoCompanies.meta,
-      invested: 5,
-      tokens: .01,
-      sources: ['Instagram · Search'],
-    ),
-  };
 }

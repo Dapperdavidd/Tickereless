@@ -188,7 +188,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Base Sepolia'), findsOneWidget);
 
-    final reviewButton = find.text('Review Purchase');
+    final reviewButton = find.text('Buy with USDC');
     await tester.ensureVisible(reviewButton);
     await tester.tap(reviewButton);
     await tester.pumpAndSettle();
@@ -205,14 +205,14 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Own Meta Platforms'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Review Purchase'));
+    await tester.tap(find.text('Buy with USDC'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('View in Wallet'));
     await tester.pumpAndSettle();
 
     expect(find.text('Wallet'), findsOneWidget);
-    expect(find.text(r'$32.00'), findsOneWidget);
+    expect(find.text(r'$15.00'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('Recent Transactions'),
       240,

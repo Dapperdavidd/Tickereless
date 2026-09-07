@@ -5,6 +5,8 @@ import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/core/widgets/summary_row.dart';
+import 'package:tickerless/core/constant/chain_config.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// The receipt. Both ways out lead back into the app, not back through the
 /// purchase flow the user just finished.
@@ -51,9 +53,18 @@ class PurchaseConfirmedScreen extends StatelessWidget {
               gap: 28,
               children: [
                 SummaryRow(label: 'Discovered via', value: args.source),
-                const SummaryRow(
+                SummaryRow(
                   label: 'Transaction',
-                  value: 'View on BaseScan ↗',
+                  value: args.transactionHash == null
+                      ? 'Confirmed on Base'
+                      : 'View on BaseScan ↗',
+                  onTap: args.transactionHash == null
+                      ? null
+                      : () => launchUrl(
+                          Uri.parse(
+                            '${ChainConfig.explorerUrl}/tx/${args.transactionHash}',
+                          ),
+                        ),
                 ),
               ],
             ),

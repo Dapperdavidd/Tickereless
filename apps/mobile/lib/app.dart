@@ -5,11 +5,13 @@ import 'package:tickerless/core/di/dependencies.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:tickerless/features/auth/presentation/bloc/auth_state.dart';
 import 'package:tickerless/features/discovery/presentation/bloc/lens_bloc.dart';
 import 'package:tickerless/features/discovery/presentation/bloc/link_bloc.dart';
 import 'package:tickerless/features/discovery/presentation/bloc/search_bloc.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_event.dart';
+import 'package:tickerless/features/auth/domain/entities/access_mode.dart';
 
 /// Wires dependencies to blocs to the router. Everything below this is a
 /// feature; everything above it is `main`.
@@ -55,6 +57,7 @@ class _TickerlessAppState extends State<TickerlessApp> {
         // rather than receiving a bloc from up here.
         RepositoryProvider.value(value: dependencies.getPriceSeries),
         RepositoryProvider.value(value: dependencies.getCompanyNews),
+        RepositoryProvider.value(value: dependencies.chainGateway),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -80,11 +83,33 @@ class _TickerlessAppState extends State<TickerlessApp> {
             ),
           ),
         ],
-        child: MaterialApp.router(
-          title: 'Tickerless',
-          debugShowCheckedModeBanner: false,
-          theme: AppTheme.dark,
-          routerConfig: _router,
+        child: BlocListener<AuthBloc, AuthState>(
+          listenWhen: (previous, current) =>
+              previous.walletAddress != current.walletAddress,
+          listener: (context, auth) async {
+            if (auth.mode != AccessMode.authenticated ||
+                auth.walletAddress == null) {
+              return;
+            }
+            try {
+              final snapshot = await dependencies.chainGateway.snapshot(
+                auth.walletAddress!,
+              );
+              if (context.mounted) {
+                context.read<PortfolioBloc>().add(
+                  PortfolioChainSynced(snapshot.positions),
+                );
+              }
+            } catch (_) {
+              // Wallet renders its own retryable chain state.
+            }
+          },
+          child: MaterialApp.router(
+            title: 'Tickerless',
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.dark,
+            routerConfig: _router,
+          ),
         ),
       ),
     );

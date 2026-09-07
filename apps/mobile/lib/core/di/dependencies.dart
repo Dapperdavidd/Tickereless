@@ -29,6 +29,7 @@ import 'package:tickerless/features/portfolio/domain/repositories/portfolio_repo
 import 'package:tickerless/features/portfolio/domain/usecases/get_positions.dart';
 import 'package:tickerless/features/portfolio/domain/usecases/record_purchase.dart';
 import 'package:tickerless/features/wallet/data/datasource/wallet_local_datasource.dart';
+import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 import 'package:tickerless/features/wallet/data/repositories/wallet_repository_impl.dart';
 import 'package:tickerless/features/wallet/domain/repositories/wallet_repository.dart';
 import 'package:tickerless/features/wallet/domain/usecases/ensure_wallet.dart';
@@ -49,6 +50,7 @@ class AppDependencies {
     PortfolioRepository? portfolioRepository,
     QuoteRepository? quoteRepository,
     NewsRepository? newsRepository,
+    ChainGateway? chainGateway,
   }) : this._resolved(
          apiClient: apiClient ??= ApiClient(),
          authRepository:
@@ -76,6 +78,9 @@ class AppDependencies {
              ),
          quoteRepository: quoteRepository ?? const DemoQuoteRepository(),
          newsRepository: newsRepository ?? OfficialNewsRepository(),
+         chainGateway:
+             chainGateway ??
+             BaseSepoliaGateway(wallets: WalletLocalDataSourceImpl()),
        );
 
   AppDependencies._resolved({
@@ -86,6 +91,7 @@ class AppDependencies {
     required PortfolioRepository portfolioRepository,
     required QuoteRepository quoteRepository,
     required NewsRepository newsRepository,
+    required this.chainGateway,
   }) : signInWithEmail = SignInWithEmailUseCase(repository: authRepository),
        registerWithEmail = RegisterWithEmailUseCase(repository: authRepository),
        restoreSession = RestoreSessionUseCase(repository: authRepository),
@@ -105,6 +111,7 @@ class AppDependencies {
        getCompanyNews = GetCompanyNewsUseCase(repository: newsRepository);
 
   final ApiClient apiClient;
+  final ChainGateway chainGateway;
 
   final SignInWithEmailUseCase signInWithEmail;
   final RegisterWithEmailUseCase registerWithEmail;

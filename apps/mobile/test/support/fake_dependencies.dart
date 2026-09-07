@@ -2,11 +2,13 @@ import 'package:tickerless/core/di/dependencies.dart';
 import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
 import 'package:tickerless/features/discovery/domain/entities/company_match.dart';
+import 'package:tickerless/features/discovery/domain/entities/company.dart';
 import 'package:tickerless/features/discovery/domain/repositories/discovery_repository.dart';
 import 'package:tickerless/features/market/domain/entities/news_article.dart';
 import 'package:tickerless/features/market/domain/repositories/news_repository.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:tickerless/features/wallet/domain/repositories/wallet_repository.dart';
+import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 
 /// Dependencies with nothing behind them that touches a network, a Keychain,
 /// or a platform channel — the portfolio keeps its real in-memory source,
@@ -19,7 +21,22 @@ AppDependencies fakeDependencies({
   walletRepository: FakeWalletRepository(),
   discoveryRepository: discovery ?? FakeDiscoveryRepository(),
   newsRepository: FakeNewsRepository(),
+  chainGateway: FakeChainGateway(),
 );
+
+class FakeChainGateway implements ChainGateway {
+  @override
+  Future<OnChainSnapshot> snapshot(String walletAddress) async =>
+      const OnChainSnapshot(usdc: 15, positions: []);
+
+  @override
+  Future<PurchaseResult> buy({
+    required String userId,
+    required Company company,
+    required double usdc,
+  }) async =>
+      PurchaseResult(hash: '0x${'1' * 64}', tokens: usdc / company.price);
+}
 
 class FakeAuthRepository implements AuthRepository {
   static const session = AuthSession(

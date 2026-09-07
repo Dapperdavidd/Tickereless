@@ -14,11 +14,17 @@ class PortfolioBloc extends Bloc<PortfolioEvent, PortfolioState> {
        _recordPurchase = recordPurchase,
        super(const PortfolioInitial()) {
     on<PortfolioRequested>(_onRequested);
+    on<PortfolioChainSynced>(_onChainSynced);
     on<PurchaseRecorded>(_onPurchaseRecorded);
   }
 
   final GetPositionsUseCase _getPositions;
   final RecordPurchaseUseCase _recordPurchase;
+
+  void _onChainSynced(
+    PortfolioChainSynced event,
+    Emitter<PortfolioState> emit,
+  ) => emit(PortfolioLoaded(event.positions));
 
   Future<void> _onRequested(
     PortfolioRequested event,

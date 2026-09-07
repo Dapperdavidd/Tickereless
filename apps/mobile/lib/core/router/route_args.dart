@@ -35,13 +35,21 @@ class ReceiptArgs extends Equatable {
     required this.invested,
     required this.tokens,
     required this.source,
+    this.transactionHash,
   });
 
   final Company company;
   final double invested;
   final double tokens;
   final String source;
+  final String? transactionHash;
 
   @override
-  List<Object?> get props => [company, invested, tokens, source];
+  List<Object?> get props => [
+    company,
+    invested,
+    tokens,
+    source,
+    transactionHash,
+  ];
 }

@@ -902,7 +902,7 @@ packages:
     source: hosted
     version: "15.3.0"
   wallet:
-    dependency: transitive
+    dependency: "direct main"
     description:
       name: wallet
       sha256: "20b6d8440039726841bd23b2bac64f888ec1ce1509edcc3ed2ad1753f613521e"

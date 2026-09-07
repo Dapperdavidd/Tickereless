@@ -14,6 +14,7 @@ import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.d
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_event.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
+import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 
 /// Wallet identity, owned assets, and the transactions that produced them.
 /// The historical route stays `/activity` so existing deep links keep working.
@@ -25,27 +26,50 @@ class ActivityScreen extends StatelessWidget {
     builder: (context, auth) {
       if (auth.isGuest) return const _GuestWallet();
       return BlocBuilder<PortfolioBloc, PortfolioState>(
-        builder: (context, portfolio) =>
-            _WalletBody(address: auth.walletAddress, portfolio: portfolio),
+        builder: (context, portfolio) {
+          final address = auth.walletAddress;
+          if (address == null) {
+            return _WalletBody(address: null, portfolio: portfolio);
+          }
+          return FutureBuilder<OnChainSnapshot>(
+            future: context.read<ChainGateway>().snapshot(address),
+            builder: (context, snapshot) => _WalletBody(
+              address: address,
+              portfolio: portfolio,
+              chain: snapshot.data,
+              chainError: snapshot.hasError,
+            ),
+          );
+        },
       );
     },
   );
 }
 
 class _WalletBody extends StatelessWidget {
-  const _WalletBody({required this.address, required this.portfolio});
+  const _WalletBody({
+    required this.address,
+    required this.portfolio,
+    this.chain,
+    this.chainError = false,
+  });
   final String? address;
   final PortfolioState portfolio;
+  final OnChainSnapshot? chain;
+  final bool chainError;
 
   @override
   Widget build(BuildContext context) {
     final loaded = portfolio is PortfolioLoaded
         ? portfolio as PortfolioLoaded
         : null;
-    final total = loaded?.total ?? 0;
+    final positions = chain?.positions ?? const <OwnedPosition>[];
+    final total =
+        (chain?.usdc ?? 0) +
+        positions.fold<double>(0, (sum, position) => sum + position.invested);
     final dailyChange = loaded == null || total == 0
         ? 0.0
-        : loaded.positions.fold<double>(
+        : positions.fold<double>(
                 0,
                 (sum, item) => sum + item.invested * item.company.change,
               ) /
@@ -120,16 +144,24 @@ class _WalletBody extends StatelessWidget {
             const SizedBox(height: 32),
             _SectionHeading(
               title: 'Your Assets',
-              trailing: '${loaded?.positions.length ?? 0} assets',
+              trailing: chain == null
+                  ? 'Loading on-chain…'
+                  : '${positions.length + 1} assets',
             ),
             const SizedBox(height: 15),
-            if (loaded != null)
+            if (chain != null)
               HairlineList(
                 gap: 22,
                 children: [
-                  for (final position in loaded.positions)
+                  _UsdcRow(balance: chain!.usdc),
+                  for (final position in positions)
                     _AssetRow(position: position),
                 ],
+              )
+            else if (chainError)
+              const Text(
+                'Base Sepolia balances are temporarily unavailable.',
+                style: TextStyle(color: AppColors.muted),
               )
             else
               const LinearProgressIndicator(),
@@ -157,6 +189,39 @@ class _WalletBody extends StatelessWidget {
       ),
     );
   }
+}
+
+class _UsdcRow extends StatelessWidget {
+  const _UsdcRow({required this.balance});
+  final double balance;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      const CircleAvatar(
+        radius: 21,
+        backgroundColor: Color(0xFF2775CA),
+        child: Text(r'$ ', style: TextStyle(fontWeight: FontWeight.w800)),
+      ),
+      const SizedBox(width: 13),
+      const Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('USD Coin', style: TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              'USDC · Base Sepolia',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+      Text(
+        '\$${balance.toStringAsFixed(2)}',
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+    ],
+  );
 }
 
 class _AddressPill extends StatelessWidget {
