@@ -4,7 +4,9 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 import '../services/google_auth_service.dart';
+import '../state/auth_state.dart';
 import '../widgets/tickerless_wordmark.dart';
+import 'email_auth_screen.dart';
 import 'home_shell.dart';
 
 const _pageCount = 3;
@@ -34,11 +36,25 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _autoplay = Timer(const Duration(seconds: 5), _advancePage);
   }
 
-  void _advancePage() {
+  Future<void> _advancePage() async {
     if (!mounted || !controller.hasClients) return;
-    controller.animateToPage(
-      (page + 1) % _pageCount,
-      duration: const Duration(milliseconds: 1150),
+    if (page < _pageCount - 1) {
+      await controller.animateToPage(
+        page + 1,
+        duration: const Duration(milliseconds: 1150),
+        curve: Curves.easeInOutCubic,
+      );
+      return;
+    }
+    await controller.animateToPage(
+      1,
+      duration: const Duration(milliseconds: 680),
+      curve: Curves.easeInOutCubic,
+    );
+    if (!mounted) return;
+    await controller.animateToPage(
+      0,
+      duration: const Duration(milliseconds: 680),
       curve: Curves.easeInOutCubic,
     );
   }
@@ -48,17 +64,32 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     _scheduleAutoplay();
   }
 
-  void enterApp() => Navigator.of(
+  void _enterApp() => Navigator.of(
     context,
   ).pushReplacement(MaterialPageRoute<void>(builder: (_) => const HomeShell()));
+
+  void _continueAsGuest() {
+    authState.continueAsGuest();
+    _enterApp();
+  }
+
+  void _openEmail() {
+    _autoplay?.cancel();
+    Navigator.of(context)
+        .push(MaterialPageRoute<void>(builder: (_) => const EmailAuthScreen()))
+        .then((_) {
+          if (mounted) _scheduleAutoplay();
+        });
+  }
 
   Future<void> signInWithGoogle() async {
     if (googleBusy) return;
     _autoplay?.cancel();
     setState(() => googleBusy = true);
     try {
-      await googleAuth.signIn();
-      if (mounted) enterApp();
+      final session = await googleAuth.signIn();
+      authState.authenticate(session);
+      if (mounted) _enterApp();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -88,7 +119,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
         fit: StackFit.expand,
         children: [
           _StarField(controller: controller),
-          _SunFlare(controller: controller),
           _EarthPanorama(
             controller: controller,
             viewportWidth: constraints.maxWidth,
@@ -124,7 +154,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         _StoryPage(
                           eyebrow: 'DISCOVER → OWN',
                           title: 'Turn attention\ninto ownership.',
-                          body: 'Scan a product. Search an idea.\nPaste a link. Find the company\nbehind what caught your eye.',
+                          body: '',
                           showMethods: true,
                         ),
                       ],
@@ -135,11 +165,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 Padding(
                   padding: const EdgeInsets.fromLTRB(22, 20, 22, 12),
                   child: _AuthActions(
-                    onEmail: enterApp,
+                    onEmail: _openEmail,
                     onGoogle: googleBusy
                         ? null
                         : () => unawaited(signInWithGoogle()),
-                    onGuest: enterApp,
+                    onGuest: _continueAsGuest,
                     googleBusy: googleBusy,
                   ),
                 ),
@@ -203,7 +233,7 @@ class _EarthPanorama extends StatelessWidget {
               stops: [0, .2, .42, 1],
             ).createShader(bounds),
             child: Image.asset(
-              'assets/images/earth-journey-v3.png',
+              'assets/images/earth-journey-v4.png',
               width: viewportWidth * _pageCount,
               fit: BoxFit.fitWidth,
               filterQuality: FilterQuality.high,
@@ -261,51 +291,6 @@ class _StarFieldPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-class _SunFlare extends StatelessWidget {
-  const _SunFlare({required this.controller});
-
-  final PageController controller;
-
-  @override
-  Widget build(BuildContext context) => IgnorePointer(
-    child: AnimatedBuilder(
-      animation: controller,
-      builder: (context, child) {
-        final position = controller.hasClients
-            ? (controller.page ?? controller.initialPage.toDouble())
-            : controller.initialPage.toDouble();
-        final visibility = (1 - position).clamp(0.0, 1.0);
-        return Opacity(
-          opacity: visibility,
-          child: Transform.translate(
-            offset: Offset(-position * 90, position * 8),
-            child: child,
-          ),
-        );
-      },
-      child: Align(
-        alignment: const Alignment(-.86, -.78),
-        child: Container(
-          width: 118,
-          height: 118,
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: RadialGradient(
-              colors: [
-                Color(0xFFFFFFFF),
-                Color(0xFFFFE2B8),
-                Color(0x55D68A48),
-                Colors.transparent,
-              ],
-              stops: [0, .035, .19, 1],
-            ),
-          ),
-        ),
-      ),
-    ),
-  );
-}
-
 class _EdgeVignette extends StatelessWidget {
   const _EdgeVignette();
 
@@ -344,94 +329,118 @@ class _StoryPage extends StatelessWidget {
   final bool showMethods;
 
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 26),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const SizedBox(height: 42),
-          Text(
-            eyebrow,
-            style: const TextStyle(
-              color: Color(0xFFAFC3CF),
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 1.8,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final compact = constraints.maxHeight < 430;
+      return Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 26),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(height: compact ? 18 : 42),
+            Text(
+              eyebrow,
+              style: const TextStyle(
+                color: Color(0xFFAFC3CF),
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 1.8,
+              ),
             ),
-          ),
-          const SizedBox(height: 13),
-          Text(
-            title,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 42,
-              height: .92,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -2.1,
+            SizedBox(height: compact ? 8 : 13),
+            Text(
+              title,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 34 : 42,
+                height: .92,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -2.1,
+              ),
             ),
-          ),
-          const SizedBox(height: 19),
-          Container(
-            width: 30,
-            height: 2,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(2),
+            SizedBox(height: compact ? 12 : 19),
+            Container(
+              width: 30,
+              height: 2,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          const SizedBox(height: 17),
-          Text(
-            body,
-            style: const TextStyle(
-              color: Color(0xFFD5E0E6),
-              fontSize: 14,
-              height: 1.42,
-              letterSpacing: -.1,
-              shadows: [Shadow(color: Colors.black, blurRadius: 12)],
-            ),
-          ),
-          if (showMethods) ...[
-            const SizedBox(height: 20),
-            const _DiscoveryMethods(),
+            if (body.isNotEmpty) ...[
+              const SizedBox(height: 17),
+              Text(
+                body,
+                style: const TextStyle(
+                  color: Color(0xFFD5E0E6),
+                  fontSize: 14,
+                  height: 1.42,
+                  letterSpacing: -.1,
+                  shadows: [Shadow(color: Colors.black, blurRadius: 12)],
+                ),
+              ),
+            ],
+            if (showMethods) ...[
+              SizedBox(height: compact ? 12 : 20),
+              _DiscoveryMethods(compact: compact),
+            ],
+            const Spacer(),
           ],
-          const Spacer(),
-        ],
-      ),
-    );
-  }
+        ),
+      );
+    },
+  );
 }
 
 class _DiscoveryMethods extends StatelessWidget {
-  const _DiscoveryMethods();
+  const _DiscoveryMethods({required this.compact});
+
+  final bool compact;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: const [
-      Expanded(
-        child: _DiscoveryMethod(icon: Icons.camera_alt_outlined, label: 'Lens'),
+  Widget build(BuildContext context) => Column(
+    children: [
+      _DiscoveryMethod(
+        icon: Icons.camera_alt_outlined,
+        label: 'Scan anything',
+        detail: 'Products, logos, receipts',
+        compact: compact,
       ),
-      SizedBox(width: 9),
-      Expanded(
-        child: _DiscoveryMethod(icon: Icons.link_rounded, label: 'Link'),
+      SizedBox(height: compact ? 6 : 10),
+      _DiscoveryMethod(
+        icon: Icons.search_rounded,
+        label: 'Search naturally',
+        detail: 'No tickers needed',
+        compact: compact,
       ),
-      SizedBox(width: 9),
-      Expanded(
-        child: _DiscoveryMethod(icon: Icons.search_rounded, label: 'Search'),
+      SizedBox(height: compact ? 6 : 10),
+      _DiscoveryMethod(
+        icon: Icons.link_rounded,
+        label: 'Paste a link',
+        detail: 'Articles, websites, anything',
+        compact: compact,
       ),
     ],
   );
 }
 
 class _DiscoveryMethod extends StatelessWidget {
-  const _DiscoveryMethod({required this.icon, required this.label});
+  const _DiscoveryMethod({
+    required this.icon,
+    required this.label,
+    required this.detail,
+    required this.compact,
+  });
 
   final IconData icon;
   final String label;
+  final String detail;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) => Container(
-    height: 66,
+    height: compact ? 46 : 58,
+    padding: const EdgeInsets.symmetric(horizontal: 12),
     decoration: BoxDecoration(
       color: Colors.black.withValues(alpha: .46),
       border: Border.all(color: const Color(0xFF3B5260)),
@@ -444,19 +453,38 @@ class _DiscoveryMethod extends StatelessWidget {
         ),
       ],
     ),
-    child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
+    child: Row(
       children: [
-        Icon(icon, size: 22, color: Colors.white),
-        const SizedBox(height: 6),
-        Text(
-          label,
-          style: const TextStyle(
-            color: Color(0xFFD9E4EA),
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            letterSpacing: .2,
-          ),
+        SizedBox(
+          width: 40,
+          height: 40,
+          child: Icon(icon, size: 22, color: Colors.white),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              detail,
+              style: const TextStyle(color: Color(0xFF94A8B4), fontSize: 10),
+            ),
+          ],
+        ),
+        const Spacer(),
+        const Icon(
+          Icons.arrow_forward_rounded,
+          size: 15,
+          color: Color(0xFF6F838F),
         ),
       ],
     ),

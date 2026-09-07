@@ -4,6 +4,8 @@ import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/space_orb.dart';
 import '../state/app_store.dart';
+import '../state/auth_state.dart';
+import 'email_auth_screen.dart';
 
 class WorldScreen extends StatelessWidget {
   const WorldScreen({super.key});
@@ -90,57 +92,99 @@ class ActivityScreen extends StatelessWidget {
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
   @override
-  Widget build(BuildContext context) => const _TabList(
-    title: 'You',
-    subtitle: 'Your identity in the ownership layer.',
-    children: [
-      GlassCard(
-        child: Row(
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: authState,
+    builder: (context, _) {
+      if (authState.isGuest) {
+        return _TabList(
+          title: 'You',
+          subtitle: 'You are exploring without a profile.',
           children: [
-            SpaceOrb(size: 64),
-            SizedBox(width: 14),
-            Expanded(
+            const GlassCard(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Icon(Icons.person_outline_rounded, size: 34),
+                  SizedBox(height: 18),
                   Text(
-                    'Explorer',
-                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    'Guest mode',
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                   ),
-                  SizedBox(height: 3),
+                  SizedBox(height: 7),
                   Text(
-                    '0x3f...7a9d  ⧉',
-                    style: TextStyle(color: AppColors.muted, fontSize: 12),
+                    'Search, scan, and discover freely. Sign in when you are ready to own test assets and create your profile.',
+                    style: TextStyle(color: AppColors.muted, height: 1.45),
                   ),
                 ],
               ),
             ),
-          ],
-        ),
-      ),
-      _Setting(icon: Icons.settings_outlined, label: 'Settings'),
-      _Setting(
-        icon: Icons.account_balance_wallet_outlined,
-        label: 'Connected Wallet',
-      ),
-      _Setting(icon: Icons.notifications_none, label: 'Notifications'),
-      _Setting(icon: Icons.dark_mode_outlined, label: 'Appearance · Dark'),
-      _Setting(icon: Icons.help_outline, label: 'Help & Support'),
-      _Setting(icon: Icons.info_outline, label: 'About Tickerless'),
-      GlassCard(
-        child: Row(
-          children: [
-            Icon(Icons.check_circle, color: AppColors.blue),
-            SizedBox(width: 12),
-            Text(
-              'Base Sepolia · Demo assets',
-              style: TextStyle(fontWeight: FontWeight.w700),
+            FilledButton(
+              onPressed: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const EmailAuthScreen(),
+                ),
+              ),
+              child: const Text('Sign in or create account'),
             ),
           ],
-        ),
-      ),
-      _SignOutButton(),
-    ],
+        );
+      }
+      return const _TabList(
+        title: 'You',
+        subtitle: 'Your identity in the ownership layer.',
+        children: [
+          GlassCard(
+            child: Row(
+              children: [
+                SpaceOrb(size: 64),
+                SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Explorer',
+                        style: TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      SizedBox(height: 3),
+                      Text(
+                        'Authenticated profile',
+                        style: TextStyle(color: AppColors.muted, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          _Setting(icon: Icons.settings_outlined, label: 'Settings'),
+          _Setting(
+            icon: Icons.account_balance_wallet_outlined,
+            label: 'Connected Wallet',
+          ),
+          _Setting(icon: Icons.notifications_none, label: 'Notifications'),
+          _Setting(icon: Icons.dark_mode_outlined, label: 'Appearance · Dark'),
+          _Setting(icon: Icons.help_outline, label: 'Help & Support'),
+          _Setting(icon: Icons.info_outline, label: 'About Tickerless'),
+          GlassCard(
+            child: Row(
+              children: [
+                Icon(Icons.check_circle, color: AppColors.blue),
+                SizedBox(width: 12),
+                Text(
+                  'Base Sepolia · Demo assets',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+          _SignOutButton(),
+        ],
+      );
+    },
   );
 }
 

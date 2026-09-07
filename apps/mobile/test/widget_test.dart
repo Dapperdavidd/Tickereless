@@ -1,7 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tickerless/src/app.dart';
+import 'package:tickerless/src/services/api_client.dart';
+import 'package:tickerless/src/state/auth_state.dart';
 
 void main() {
+  tearDown(authState.signOut);
+
   testWidgets('guest entry opens the Discover experience', (tester) async {
     await tester.pumpWidget(const TickerlessApp());
 
@@ -25,6 +29,23 @@ void main() {
     expect(find.bySemanticsLabel('Continue as guest'), findsOneWidget);
   });
 
+  testWidgets('email entry opens working sign-in and registration forms', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const TickerlessApp());
+
+    await tester.tap(find.text('Continue with email'));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome back.'), findsOneWidget);
+    expect(find.text('Email address'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+
+    await tester.tap(find.text('New to Tickerless? Create an account'));
+    await tester.pumpAndSettle();
+    expect(find.text('Create your world.'), findsOneWidget);
+    expect(find.text('Create account'), findsOneWidget);
+  });
+
   testWidgets('onboarding advances through the shared world automatically', (
     tester,
   ) async {
@@ -38,12 +59,39 @@ void main() {
     expect(find.text('Continue with Google'), findsOneWidget);
   });
 
+  testWidgets('final onboarding page rewinds through the complete journey', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const TickerlessApp());
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 1200));
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 1200));
+
+    expect(find.text('Turn attention\ninto ownership.'), findsOneWidget);
+    expect(find.text('Scan anything'), findsOneWidget);
+    expect(find.text('Search naturally'), findsOneWidget);
+    expect(find.text('Paste a link'), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('The world is\nthe stock market.'), findsOneWidget);
+  });
+
   testWidgets('search journey reaches a Base Sepolia ownership confirmation', (
     tester,
   ) async {
     await tester.pumpWidget(const TickerlessApp());
     await tester.tap(find.text('Continue as guest'));
     await tester.pumpAndSettle();
+    authState.authenticate(
+      const AuthSession(
+        accessToken: 'test-session',
+        email: 'owner@example.com',
+      ),
+    );
 
     await tester.tap(find.text('Search'));
     await tester.pumpAndSettle();
@@ -65,5 +113,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('You now own\nMeta Platforms.'), findsOneWidget);
     expect(find.text('on Base Sepolia'), findsOneWidget);
+  });
+
+  testWidgets('guest discovery stops at the purchase sign-in gate', (
+    tester,
+  ) async {
+    await tester.pumpWidget(const TickerlessApp());
+    await tester.tap(find.text('Continue as guest'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Search'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View Company →'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Own Meta Platforms'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sign in to own a piece'), findsOneWidget);
+    expect(find.text('Review Purchase'), findsNothing);
   });
 }

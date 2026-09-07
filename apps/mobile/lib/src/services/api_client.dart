@@ -60,6 +60,33 @@ class TickerlessApi {
     return AuthSession.fromJson(decoded);
   }
 
+  Future<AuthSession> emailLogin(String email, String password) =>
+      _emailAuth('/v1/auth/email/login', email, password);
+
+  Future<AuthSession> emailRegister(String email, String password) =>
+      _emailAuth('/v1/auth/email/register', email, password);
+
+  Future<AuthSession> _emailAuth(
+    String path,
+    String email,
+    String password,
+  ) async {
+    final response = await _client
+        .post(
+          Uri.parse('$baseUrl$path'),
+          headers: {'content-type': 'application/json'},
+          body: jsonEncode({'email': email.trim(), 'password': password}),
+        )
+        .timeout(const Duration(seconds: 12));
+    final decoded = jsonDecode(response.body) as Map<String, dynamic>;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException(
+        decoded['message']?.toString() ?? 'Email authentication failed',
+      );
+    }
+    return AuthSession.fromJson(decoded);
+  }
+
   Future<List<CompanyMatch>> _resolve(
     String path,
     Map<String, String> body,

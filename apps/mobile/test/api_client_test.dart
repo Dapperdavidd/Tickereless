@@ -58,4 +58,50 @@ void main() {
     expect(session.accessToken, 'tickerless-session');
     expect(session.email, 'owner@example.com');
   });
+
+  test('email login exchanges credentials for a backend session', () async {
+    final api = TickerlessApi(
+      client: MockClient((request) async {
+        expect(request.url.path, '/v1/auth/email/login');
+        expect(jsonDecode(request.body), {
+          'email': 'owner@example.com',
+          'password': 'secure-password',
+        });
+        return http.Response(
+          '{"access_token":"email-session","token_type":"Bearer","expires_in":2592000,"user":{"id":"00000000-0000-0000-0000-000000000001","email":"owner@example.com","wallet_address":null}}',
+          200,
+        );
+      }),
+    );
+
+    final session = await api.emailLogin(
+      ' owner@example.com ',
+      'secure-password',
+    );
+    expect(session.accessToken, 'email-session');
+    expect(session.email, 'owner@example.com');
+  });
+
+  test('email registration surfaces backend validation errors', () async {
+    final api = TickerlessApi(
+      client: MockClient((request) async {
+        expect(request.url.path, '/v1/auth/email/register');
+        return http.Response(
+          '{"code":"email_exists","message":"an account already exists for this email"}',
+          409,
+        );
+      }),
+    );
+
+    expect(
+      () => api.emailRegister('owner@example.com', 'secure-password'),
+      throwsA(
+        isA<ApiException>().having(
+          (error) => error.message,
+          'message',
+          'an account already exists for this email',
+        ),
+      ),
+    );
+  });
 }

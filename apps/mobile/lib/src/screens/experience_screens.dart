@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import '../models/company.dart';
 import '../services/api_client.dart';
 import '../state/app_store.dart';
+import '../state/auth_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
+import 'email_auth_screen.dart';
 
 void openScreen(BuildContext context, Widget screen) {
   Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => screen));
@@ -305,6 +307,36 @@ class PassportScreen extends StatelessWidget {
   final Company company;
   final String source;
 
+  void _openPurchase(BuildContext context) {
+    if (authState.canPurchase) {
+      openScreen(context, BuyScreen(company: company, source: source));
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        icon: const Icon(Icons.lock_outline_rounded),
+        title: const Text('Sign in to own a piece'),
+        content: const Text(
+          'Guests can discover, scan, search, and explore. Create or sign in to an account before purchasing test assets.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Not now'),
+          ),
+          FilledButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              openScreen(context, const EmailAuthScreen());
+            },
+            child: const Text('Sign in'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
@@ -403,8 +435,7 @@ class PassportScreen extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         FilledButton(
-          onPressed: () =>
-              openScreen(context, BuyScreen(company: company, source: source)),
+          onPressed: () => _openPurchase(context),
           child: Text('Own ${company.name}'),
         ),
         const SizedBox(height: 22),
