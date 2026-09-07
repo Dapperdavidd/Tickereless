@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
+import 'package:tickerless/core/constant/chain_config.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_state.dart';
 import 'package:tickerless/features/discovery/domain/entities/company.dart';
@@ -170,7 +171,7 @@ class _PassportView extends StatelessWidget {
                 stats: [
                   (label: 'Token', value: company.symbol),
                   (label: 'Network', value: 'Base Sepolia'),
-                  (label: 'Asset type', value: 'Demo equity'),
+                  (label: 'Asset type', value: 'Test token'),
                 ],
               ),
             ),
@@ -367,33 +368,38 @@ class _OwnBar extends StatelessWidget {
   final VoidCallback onOwn;
 
   @override
-  Widget build(BuildContext context) => DecoratedBox(
-    decoration: const BoxDecoration(
-      color: AppColors.background,
-      border: Border(top: BorderSide(color: AppColors.border)),
-    ),
-    child: SafeArea(
-      top: false,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            BlocBuilder<AuthBloc, AuthState>(
-              buildWhen: (previous, current) => previous.mode != current.mode,
-              builder: (context, _) => FilledButton(
-                onPressed: onOwn,
-                child: Text('Own ${company.name}'),
+  Widget build(BuildContext context) {
+    final supported = ChainConfig.assets.containsKey(company.ticker);
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        color: AppColors.background,
+        border: Border(top: BorderSide(color: AppColors.border)),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              BlocBuilder<AuthBloc, AuthState>(
+                buildWhen: (previous, current) => previous.mode != current.mode,
+                builder: (context, _) => FilledButton(
+                  onPressed: supported ? onOwn : null,
+                  child: Text(
+                    supported ? 'Own ${company.name}' : 'News only on testnet',
+                  ),
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Demo assets on Base Sepolia. No real funds are required.',
-              style: TextStyle(color: AppColors.muted, fontSize: 11),
-            ),
-          ],
+              const SizedBox(height: 8),
+              const Text(
+                'Transactions use testnet USDC and have no monetary value.',
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
         ),
       ),
-    ),
-  );
+    );
+  }
 }

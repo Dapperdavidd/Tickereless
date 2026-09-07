@@ -191,7 +191,7 @@ class _AccountProfileState extends State<_AccountProfile> {
               onTap: () => _info(
                 context,
                 'Help & Support',
-                'Tickerless is currently a Base Sepolia demo. For account or wallet help, never share your private key. Support channels will be added before public release.',
+                'Tickerless currently runs on Base Sepolia. For account or wallet help, never share your private key. Support channels will be added before public release.',
               ),
             ),
             SettingTile(
@@ -200,7 +200,7 @@ class _AccountProfileState extends State<_AccountProfile> {
               onTap: () => _info(
                 context,
                 'About Tickerless',
-                'Point at the world. Search it. Own a piece of it.\n\nTickerless connects products, companies, live company news, and demo tokenized equities on Base Sepolia.',
+                'Point at the world. Search it. Own a piece of it.\n\nTickerless connects products, companies, live company news, and test tokenized equities settled with testnet USDC on Base Sepolia.',
               ),
             ),
           ],
@@ -212,7 +212,7 @@ class _AccountProfileState extends State<_AccountProfile> {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Base Sepolia · Demo assets',
+                'Base Sepolia · Live testnet',
                 style: TextStyle(color: AppColors.muted, fontSize: 13),
               ),
             ),
