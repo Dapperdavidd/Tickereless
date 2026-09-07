@@ -2,7 +2,7 @@ import 'package:equatable/equatable.dart';
 import 'package:tickerless/features/auth/domain/entities/access_mode.dart';
 import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 
-enum AuthStatus { idle, inProgress, failure }
+enum AuthStatus { restoring, idle, inProgress, failure }
 
 /// Access is one long-lived fact (who is here) plus a transient one (is a
 /// sign-in in flight), so this is a single state object rather than a set of

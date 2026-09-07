@@ -25,7 +25,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
        _signOut = signOut,
        _ensureWallet = ensureWallet,
        _restoreSession = restoreSession,
-       super(const AuthState()) {
+       super(const AuthState(status: AuthStatus.restoring)) {
     on<AuthRestoreRequested>(_onRestoreRequested);
     on<AuthGuestRequested>(_onGuestRequested);
     on<AuthEmailSubmitted>(_onEmailSubmitted);
@@ -48,7 +48,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     try {
       final session = await _restoreSession();
-      if (session == null) return;
+      if (session == null) {
+        emit(const AuthState(status: AuthStatus.idle));
+        return;
+      }
       final wallet = await _ensureWallet(session.userId);
       emit(
         AuthState(
@@ -58,7 +61,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ),
       );
     } on Failure {
-      emit(const AuthState());
+      emit(const AuthState(status: AuthStatus.idle));
     }
   }
 

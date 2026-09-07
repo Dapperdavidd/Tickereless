@@ -9,6 +9,12 @@ abstract final class AppColors {
   static const blue = Color(0xFF69C8FF);
   static const green = Color(0xFF36F46B);
   static const red = Color(0xFFFF5D66);
+  static const appGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF071D31), Color(0xFF020B13), background],
+    stops: [0, .48, 1],
+  );
 }
 
 abstract final class AppTheme {
@@ -29,7 +35,7 @@ abstract final class AppTheme {
     ),
     navigationBarTheme: NavigationBarThemeData(
       height: 66,
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xF2050D14),
       indicatorColor: Colors.white.withValues(alpha: 0.12),
       labelTextStyle: WidgetStateProperty.resolveWith(
         (states) => TextStyle(

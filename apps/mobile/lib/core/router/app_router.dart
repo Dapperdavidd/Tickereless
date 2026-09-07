@@ -5,8 +5,10 @@ import 'package:tickerless/core/router/router_refresh.dart';
 import 'package:tickerless/features/activity/presentation/screens/activity_screen.dart';
 import 'package:tickerless/features/auth/domain/entities/access_mode.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:tickerless/features/auth/presentation/bloc/auth_state.dart';
 import 'package:tickerless/features/auth/presentation/screens/email_auth_screen.dart';
 import 'package:tickerless/features/auth/presentation/screens/onboarding_screen.dart';
+import 'package:tickerless/features/auth/presentation/screens/startup_screen.dart';
 import 'package:tickerless/features/discovery/presentation/screens/lens_screen.dart';
 import 'package:tickerless/features/discovery/presentation/screens/link_screen.dart';
 import 'package:tickerless/features/discovery/presentation/screens/passport_screen.dart';
@@ -20,6 +22,7 @@ import 'package:tickerless/features/profile/presentation/screens/profile_screen.
 
 /// Every route path in the app, in one place.
 abstract final class AppRoutes {
+  static const startup = '/';
   static const onboarding = '/onboarding';
   static const emailAuth = '/email-auth';
   static const discover = '/discover';
@@ -40,18 +43,27 @@ final rootNavigatorKey = GlobalKey<NavigatorState>();
 /// gate below has to read live access state.
 GoRouter createAppRouter(AuthBloc authBloc) => GoRouter(
   navigatorKey: rootNavigatorKey,
-  initialLocation: AppRoutes.onboarding,
+  initialLocation: AppRoutes.startup,
   refreshListenable: GoRouterRefreshStream(authBloc.stream),
   // Onboarding is the only way past the door. It is enforced here rather than
   // by whichever screen happens to be first, because "first" is not something
   // the app controls once deep links exist.
   redirect: (context, state) {
+    final restoring = authBloc.state.status == AuthStatus.restoring;
+    if (restoring) {
+      return state.matchedLocation == AppRoutes.startup
+          ? null
+          : AppRoutes.startup;
+    }
     final signedOut = authBloc.state.mode == AccessMode.signedOut;
     final authenticated = authBloc.state.mode == AccessMode.authenticated;
     final atDoor =
         state.matchedLocation == AppRoutes.onboarding ||
         state.matchedLocation == AppRoutes.emailAuth;
 
+    if (state.matchedLocation == AppRoutes.startup) {
+      return signedOut ? AppRoutes.onboarding : AppRoutes.discover;
+    }
     if (signedOut && !atDoor) return AppRoutes.onboarding;
     if (!signedOut && state.matchedLocation == AppRoutes.onboarding) {
       return AppRoutes.discover;
@@ -62,6 +74,10 @@ GoRouter createAppRouter(AuthBloc authBloc) => GoRouter(
     return null;
   },
   routes: [
+    GoRoute(
+      path: AppRoutes.startup,
+      builder: (context, state) => const StartupScreen(),
+    ),
     GoRoute(
       path: AppRoutes.onboarding,
       builder: (context, state) => const OnboardingScreen(),

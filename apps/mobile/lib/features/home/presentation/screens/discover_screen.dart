@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -20,8 +22,39 @@ import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.
 /// staggered grid under a single line of chrome. Lens, Link and Search live in
 /// the header and the raised button rather than as three tiles competing with
 /// the thing the user actually came to look at.
-class DiscoverScreen extends StatelessWidget {
+class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({super.key});
+
+  @override
+  State<DiscoverScreen> createState() => _DiscoverScreenState();
+}
+
+class _DiscoverScreenState extends State<DiscoverScreen> {
+  late final PageController _worldController = PageController(
+    viewportFraction: .58,
+  );
+  Timer? _worldTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _worldTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      if (!_worldController.hasClients) return;
+      final current = _worldController.page?.round() ?? 0;
+      _worldController.animateToPage(
+        (current + 1) % (DemoCompanies.trending.length - 1),
+        duration: const Duration(milliseconds: 650),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _worldTimer?.cancel();
+    _worldController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) => Stack(
@@ -77,7 +110,7 @@ class DiscoverScreen extends StatelessWidget {
                   ),
                   Spacer(),
                   Text(
-                    'Swipe →',
+                    'Moving with the market',
                     style: TextStyle(color: AppColors.muted, fontSize: 12.5),
                   ),
                 ],
@@ -85,18 +118,37 @@ class DiscoverScreen extends StatelessWidget {
             ),
             const SizedBox(height: 13),
             SizedBox(
-              height: 178,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
+              height: 270,
+              child: PageView.builder(
+                controller: _worldController,
+                scrollDirection: Axis.vertical,
                 itemCount: DemoCompanies.trending.length - 1,
-                separatorBuilder: (_, _) => const SizedBox(width: 9),
                 itemBuilder: (context, index) {
                   final company = DemoCompanies.trending[index + 1];
-                  return SizedBox(
-                    width: 154,
-                    child: DiscoveryTile(
-                      company: company,
-                      onTap: () => _openPassport(context, company),
+                  return AnimatedBuilder(
+                    animation: _worldController,
+                    builder: (context, child) {
+                      final page = _worldController.hasClients
+                          ? (_worldController.page ?? 0)
+                          : 0.0;
+                      final distance = (page - index).abs().clamp(0.0, 1.0);
+                      return Transform.scale(
+                        scale: 1 - distance * .08,
+                        child: Opacity(
+                          opacity: 1 - distance * .38,
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 7,
+                      ),
+                      child: DiscoveryTile(
+                        company: company,
+                        onTap: () => _openPassport(context, company),
+                      ),
                     ),
                   );
                 },

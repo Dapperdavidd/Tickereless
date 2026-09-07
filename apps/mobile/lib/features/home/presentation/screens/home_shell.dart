@@ -19,7 +19,34 @@ class HomeShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    body: shell,
+    backgroundColor: Colors.transparent,
+    body: Stack(
+      fit: StackFit.expand,
+      children: [
+        const DecoratedBox(
+          decoration: BoxDecoration(gradient: AppColors.appGradient),
+        ),
+        IgnorePointer(
+          child: Align(
+            alignment: const Alignment(.85, -.72),
+            child: Container(
+              width: 240,
+              height: 240,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: RadialGradient(
+                  colors: [
+                    AppColors.blue.withValues(alpha: .12),
+                    Colors.transparent,
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        shell,
+      ],
+    ),
     bottomNavigationBar: DecoratedBox(
       decoration: const BoxDecoration(
         border: Border(top: BorderSide(color: AppColors.border)),

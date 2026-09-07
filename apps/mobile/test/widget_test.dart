@@ -1,12 +1,20 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tickerless/app.dart';
+import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
+import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
 
 import 'support/fake_dependencies.dart';
 
 void main() {
-  Future<void> pumpApp(WidgetTester tester) =>
-      tester.pumpWidget(TickerlessApp(dependencies: fakeDependencies()));
+  Future<void> pumpApp(WidgetTester tester) async {
+    await tester.pumpWidget(TickerlessApp(dependencies: fakeDependencies()));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+  }
 
   /// The gate at the passport is the only thing separating guests from
   /// owners, so most flows start by getting past the door one way or another.
@@ -71,9 +79,27 @@ void main() {
     await pumpApp(tester);
 
     expect(find.bySemanticsLabel('Continue with Apple'), findsNothing);
-    expect(find.bySemanticsLabel('Continue with Google'), findsOneWidget);
-    expect(find.bySemanticsLabel('Continue with email'), findsOneWidget);
-    expect(find.bySemanticsLabel('Continue as guest'), findsOneWidget);
+    expect(find.text('Continue with Google'), findsOneWidget);
+    expect(find.text('Continue with email'), findsOneWidget);
+    expect(find.text('Continue as guest'), findsOneWidget);
+  });
+
+  testWidgets('a returning account never sees onboarding during restore', (
+    tester,
+  ) async {
+    final auth = _DelayedRestoreAuthRepository();
+    await tester.pumpWidget(
+      TickerlessApp(dependencies: fakeDependencies(auth: auth)),
+    );
+
+    expect(find.text('The world is\nthe stock market.'), findsNothing);
+    expect(find.byType(Image), findsOneWidget);
+
+    auth.complete();
+    await tester.pumpAndSettle();
+
+    expect(find.text('Featured'), findsOneWidget);
+    expect(find.text('The world is\nthe stock market.'), findsNothing);
   });
 
   testWidgets('email entry opens working sign-in and registration forms', (
@@ -240,4 +266,27 @@ void main() {
 
     expect(find.text('The world is\nthe stock market.'), findsOneWidget);
   });
+}
+
+class _DelayedRestoreAuthRepository implements AuthRepository {
+  final _restore = Completer<AuthSession?>();
+
+  void complete() => _restore.complete(FakeAuthRepository.session);
+
+  @override
+  Future<AuthSession?> restoreSession() => _restore.future;
+
+  @override
+  Future<AuthSession> registerWithEmail(String email, String password) async =>
+      FakeAuthRepository.session;
+
+  @override
+  Future<AuthSession> signInWithEmail(String email, String password) async =>
+      FakeAuthRepository.session;
+
+  @override
+  Future<AuthSession> signInWithGoogle() async => FakeAuthRepository.session;
+
+  @override
+  Future<void> signOut() async {}
 }

@@ -21,11 +21,24 @@ class DiscoverHeader extends StatelessWidget {
     children: [
       // Flexible so a wide font or a narrow device shortens the wordmark
       // instead of overflowing the row.
-      const Flexible(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          alignment: Alignment.centerLeft,
-          child: TickerlessWordmark(compact: true),
+      Flexible(
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(
+              'assets/images/tickerless-icon.png',
+              width: 30,
+              height: 30,
+            ),
+            const SizedBox(width: 9),
+            const Flexible(
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: TickerlessWordmark(compact: true),
+              ),
+            ),
+          ],
         ),
       ),
       const Spacer(),
