@@ -43,11 +43,11 @@ class BaseSepoliaGateway implements ChainGateway {
   final Web3Client _client;
 
   static final _erc20Abi = ContractAbi.fromJson(
-    '[{"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"account","type":"address"}],"outputs":[{"type":"uint256"}]},{"type":"function","name":"approve","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"type":"bool"}]}]',
+    '[{"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"account","type":"address"}],"outputs":[{"name":"balance","type":"uint256"}]},{"type":"function","name":"approve","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"approved","type":"bool"}]}]',
     'ERC20',
   );
   static final _marketAbi = ContractAbi.fromJson(
-    '[{"type":"function","name":"buy","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"amountUsdc","type":"uint256"},{"name":"minimumTokenAmount","type":"uint256"}],"outputs":[{"type":"uint256"}]}]',
+    '[{"type":"function","name":"buy","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"amountUsdc","type":"uint256"},{"name":"minimumTokenAmount","type":"uint256"}],"outputs":[{"name":"tokenAmount","type":"uint256"}]}]',
     'TickerlessMarket',
   );
 
