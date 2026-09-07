@@ -1,36 +1,54 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:tickerless/src/app.dart';
-import 'package:tickerless/src/services/api_client.dart';
-import 'package:tickerless/src/services/wallet_service.dart';
-import 'package:tickerless/src/state/auth_state.dart';
+import 'package:tickerless/app.dart';
+
+import 'support/fake_dependencies.dart';
 
 void main() {
-  setUp(() => walletService = WalletService(store: _MemorySecretStore()));
-  tearDown(authState.signOut);
+  Future<void> pumpApp(WidgetTester tester) =>
+      tester.pumpWidget(TickerlessApp(dependencies: fakeDependencies()));
 
-  testWidgets('guest entry opens the Discover experience', (tester) async {
-    await tester.pumpWidget(const TickerlessApp());
-
-    expect(find.text('The world is\nthe stock market.'), findsOneWidget);
-    expect(find.text('Continue with email'), findsOneWidget);
-
+  /// The gate at the passport is the only thing separating guests from
+  /// owners, so most flows start by getting past the door one way or another.
+  Future<void> enterAsGuest(WidgetTester tester) async {
+    await pumpApp(tester);
     await tester.tap(find.text('Continue as guest'));
     await tester.pumpAndSettle();
+  }
 
-    expect(find.text('What caught\nyour attention\ntoday?'), findsOneWidget);
-    expect(find.text('Search anything...'), findsOneWidget);
-    expect(find.text('Discover'), findsOneWidget);
+  Future<void> signIn(WidgetTester tester) async {
+    await pumpApp(tester);
+    await tester.tap(find.text('Continue with email'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byType(TextFormField).first,
+      'owner@example.com',
+    );
+    await tester.enterText(find.byType(TextFormField).last, 'secure-password');
+    await tester.tap(find.widgetWithText(FilledButton, 'Continue with email'));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets('guest entry opens the Discover experience', (tester) async {
+    await enterAsGuest(tester);
+
+    // Discover is a grid of companies under one line of chrome, so the
+    // landmarks are the section bar and the affordances, not a hero heading.
+    expect(find.text('Featured'), findsOneWidget);
+    expect(find.text('NVIDIA'), findsOneWidget);
+    expect(find.byTooltip('Search'), findsOneWidget);
+    expect(find.byTooltip('Open Lens'), findsOneWidget);
   });
 
   testWidgets('profile lives behind the top avatar, not bottom navigation', (
     tester,
   ) async {
-    await tester.pumpWidget(const TickerlessApp());
-    await tester.tap(find.text('Continue as guest'));
-    await tester.pumpAndSettle();
+    await enterAsGuest(tester);
 
     expect(find.text('You'), findsNothing);
     expect(find.byTooltip('Open profile'), findsOneWidget);
+
     await tester.tap(find.byTooltip('Open profile'));
     await tester.pumpAndSettle();
 
@@ -38,7 +56,7 @@ void main() {
   });
 
   testWidgets('authentication choices remain visible', (tester) async {
-    await tester.pumpWidget(const TickerlessApp());
+    await pumpApp(tester);
 
     expect(find.bySemanticsLabel('Continue with Apple'), findsNothing);
     expect(find.bySemanticsLabel('Continue with Google'), findsOneWidget);
@@ -49,7 +67,7 @@ void main() {
   testWidgets('email entry opens working sign-in and registration forms', (
     tester,
   ) async {
-    await tester.pumpWidget(const TickerlessApp());
+    await pumpApp(tester);
 
     await tester.tap(find.text('Continue with email'));
     await tester.pumpAndSettle();
@@ -66,7 +84,7 @@ void main() {
   testWidgets('onboarding advances through the shared world automatically', (
     tester,
   ) async {
-    await tester.pumpWidget(const TickerlessApp());
+    await pumpApp(tester);
 
     expect(find.text('The world is\nthe stock market.'), findsOneWidget);
     expect(find.textContaining('Terms & Conditions'), findsOneWidget);
@@ -80,7 +98,7 @@ void main() {
   testWidgets('final onboarding page rewinds through the complete journey', (
     tester,
   ) async {
-    await tester.pumpWidget(const TickerlessApp());
+    await pumpApp(tester);
     await tester.pump(const Duration(milliseconds: 3300));
     await tester.pump(const Duration(milliseconds: 800));
     await tester.pump(const Duration(milliseconds: 3300));
@@ -97,27 +115,34 @@ void main() {
     expect(find.text('The world is\nthe stock market.'), findsOneWidget);
   });
 
+  testWidgets('signing in provisions a wallet and reaches Discover', (
+    tester,
+  ) async {
+    await signIn(tester);
+
+    expect(find.text('Featured'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Open profile'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('owner@example.com'), findsOneWidget);
+    expect(find.text('0x0000…00ff'), findsWidgets);
+  });
+
   testWidgets('search journey reaches a Base Sepolia ownership confirmation', (
     tester,
   ) async {
-    await tester.pumpWidget(const TickerlessApp());
-    await tester.tap(find.text('Continue as guest'));
-    await tester.pumpAndSettle();
-    await authState.authenticate(
-      const AuthSession(
-        accessToken: 'test-session',
-        email: 'owner@example.com',
-        userId: 'widget-test-owner',
-      ),
-    );
+    await signIn(tester);
 
-    await tester.tap(find.text('Search'));
+    await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
     expect(find.text('Meta Platforms'), findsOneWidget);
 
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();
-    expect(find.text('Company Passport'), findsOneWidget);
+    // The passport leads with the price and the chart, not a page title.
+    expect(find.text(r'$500.00'), findsOneWidget);
+    expect(find.text('Demo series · not market data'), findsOneWidget);
 
     final ownButton = find.text('Own Meta Platforms');
     await tester.ensureVisible(ownButton);
@@ -133,14 +158,35 @@ void main() {
     expect(find.text('on Base Sepolia'), findsOneWidget);
   });
 
+  testWidgets('a purchase lands in Your World', (tester) async {
+    await signIn(tester);
+
+    await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View Company →'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Own Meta Platforms'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review Purchase'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('View in Your World'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Your World'), findsOneWidget);
+    // $27 seeded plus the $5 purchase, and Meta keeps both discovery sources.
+    // The total shows twice: the World heading, and Discover's section bar,
+    // which the shell keeps alive in the other branch.
+    expect(find.textContaining(r'$32.00'), findsWidgets);
+    expect(find.textContaining('via Instagram · Search'), findsOneWidget);
+  });
+
   testWidgets('guest discovery stops at the purchase sign-in gate', (
     tester,
   ) async {
-    await tester.pumpWidget(const TickerlessApp());
-    await tester.tap(find.text('Continue as guest'));
-    await tester.pumpAndSettle();
+    await enterAsGuest(tester);
 
-    await tester.tap(find.text('Search'));
+    await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();
@@ -150,14 +196,19 @@ void main() {
     expect(find.text('Sign in to own a piece'), findsOneWidget);
     expect(find.text('Review Purchase'), findsNothing);
   });
-}
 
-class _MemorySecretStore implements WalletSecretStore {
-  final values = <String, String>{};
+  testWidgets('signing out returns to the door', (tester) async {
+    await signIn(tester);
+    await tester.tap(find.byTooltip('Open profile'));
+    await tester.pumpAndSettle();
 
-  @override
-  Future<String?> read(String key) async => values[key];
+    // Sign Out sits at the bottom of a long list, so it is not built until
+    // the list scrolls that far.
+    final signOut = find.text('Sign Out');
+    await tester.scrollUntilVisible(signOut, 240, scrollable: find.byType(Scrollable).last);
+    await tester.tap(signOut);
+    await tester.pumpAndSettle();
 
-  @override
-  Future<void> write(String key, String value) async => values[key] = value;
+    expect(find.text('The world is\nthe stock market.'), findsOneWidget);
+  });
 }
