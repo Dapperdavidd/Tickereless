@@ -5,8 +5,8 @@ void main() {
   testWidgets('guest entry opens the Discover experience', (tester) async {
     await tester.pumpWidget(const TickerlessApp());
 
-    expect(find.text('The world is the stock market.'), findsOneWidget);
-    expect(find.text('Create Account'), findsOneWidget);
+    expect(find.text('The world is\nthe stock market.'), findsOneWidget);
+    expect(find.text('Continue with email'), findsOneWidget);
 
     await tester.tap(find.text('Continue as guest'));
     await tester.pumpAndSettle();
@@ -21,7 +21,8 @@ void main() {
 
     expect(find.bySemanticsLabel('Continue with Apple'), findsNothing);
     expect(find.bySemanticsLabel('Continue with Google'), findsOneWidget);
-    expect(find.bySemanticsLabel('Continue with Email'), findsOneWidget);
+    expect(find.bySemanticsLabel('Continue with email'), findsOneWidget);
+    expect(find.bySemanticsLabel('Continue as guest'), findsOneWidget);
   });
 
   testWidgets('search journey reaches a Base Sepolia ownership confirmation', (
