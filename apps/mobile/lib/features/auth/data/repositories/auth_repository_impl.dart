@@ -43,7 +43,14 @@ class AuthRepositoryImpl implements AuthRepository {
       if (token == null || token.isEmpty) return null;
       return await _remoteDataSource.restoreSession(token);
     } catch (_) {
-      await _localDataSource.clearToken();
+      // A corrupt or legacy session should never strand app startup. Secure
+      // storage itself can be unavailable in an unsigned simulator build, so
+      // cleanup is best-effort and restoration still resolves as signed out.
+      try {
+        await _localDataSource.clearToken();
+      } catch (_) {
+        // The next signed build can clean it up; the app must keep opening.
+      }
       return null;
     }
   }

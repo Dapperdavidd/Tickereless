@@ -161,11 +161,23 @@ void main() {
       expect(session?.email, 'owner@example.com');
     },
   );
+
+  test('unavailable secure storage cannot strand app startup', () async {
+    final repository = repositoryWith(
+      MockClient((request) async => http.Response(_sessionBody, 200)),
+    );
+    tokens.failReads = true;
+    tokens.failClear = true;
+
+    expect(await repository.restoreSession(), isNull);
+  });
 }
 
 class _MemoryTokenStore implements AuthLocalDataSource {
   String? token;
   AuthSession? session;
+  bool failReads = false;
+  bool failClear = false;
 
   @override
   Future<void> cacheToken(String value) async => token = value;
@@ -180,10 +192,14 @@ class _MemoryTokenStore implements AuthLocalDataSource {
   Future<String?> readToken() async => token;
 
   @override
-  Future<AuthSession?> readSession() async => session;
+  Future<AuthSession?> readSession() async {
+    if (failReads) throw const LocalStorageException('Keychain unavailable');
+    return session;
+  }
 
   @override
   Future<void> clearToken() async {
+    if (failClear) throw const LocalStorageException('Keychain unavailable');
     token = null;
     session = null;
   }
