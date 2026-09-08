@@ -32,19 +32,30 @@ class _StartupScreenState extends State<StartupScreen>
         child: AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
-            final value = Curves.easeInOutCubic.transform(_controller.value);
-            final reveal = ((value - .42) / .42).clamp(0.0, 1.0);
+            final value = _controller.value;
+            final movement = Curves.easeInOutCubic.transform(
+              ((value - .08) / .60).clamp(0.0, 1.0),
+            );
+            final markOpacity = Curves.easeInCubic.transform(
+              1 - ((value - .28) / .38).clamp(0.0, 1.0),
+            );
+            final reveal = Curves.easeOutCubic.transform(
+              ((value - .38) / .34).clamp(0.0, 1.0),
+            );
             return SizedBox(
               width: 310,
               height: 96,
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  Transform.translate(
-                    offset: Offset(-92 * reveal, 0),
-                    child: CustomPaint(
-                      size: const Size.square(88),
-                      painter: _MarkPainter(progress: value),
+                  Opacity(
+                    opacity: markOpacity,
+                    child: Transform.translate(
+                      offset: Offset(-96 * movement, 0),
+                      child: CustomPaint(
+                        size: const Size.square(88),
+                        painter: _MarkPainter(progress: movement),
+                      ),
                     ),
                   ),
                   Positioned(
@@ -86,8 +97,11 @@ class _MarkPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final radius = size.width * .39;
-    final retract = ((progress - .08) / .38).clamp(0.0, 1.0);
-    final sweep = math.pi * 1.72 * (1 - retract);
+    // Keep the end of the broken ring fixed and pull its leading edge
+    // counterclockwise into it.
+    final sweep = math.pi * 1.72 * (1 - progress);
+    const endAngle = math.pi * .28;
+    final startAngle = endAngle + sweep;
     final ring = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = 4
@@ -98,8 +112,8 @@ class _MarkPainter extends CustomPainter {
     if (sweep > .01) {
       canvas.drawArc(
         Rect.fromCircle(center: center, radius: radius),
-        -math.pi * .64 + math.pi * 1.6 * retract,
-        sweep,
+        startAngle,
+        -sweep,
         false,
         ring,
       );
