@@ -46,9 +46,11 @@ fn score<'a>(company: &'a Company, query: &str) -> Option<SearchMatch<'a>> {
         .themes
         .iter()
         .filter(|theme| {
-            normalize(theme)
-                .split_whitespace()
-                .all(|word| query.split_whitespace().any(|item| item == word))
+            normalize(theme).split_whitespace().all(|word| {
+                query
+                    .split_whitespace()
+                    .any(|item| equivalent_word(item, word))
+            })
         })
         .map(String::as_str)
         .collect();
@@ -86,6 +88,16 @@ fn score<'a>(company: &'a Company, query: &str) -> Option<SearchMatch<'a>> {
         }),
         role: None,
     })
+}
+
+fn equivalent_word(left: &str, right: &str) -> bool {
+    left == right || singular(left) == singular(right)
+}
+
+fn singular(word: &str) -> &str {
+    word.strip_suffix('s')
+        .filter(|stem| stem.len() > 2)
+        .unwrap_or(word)
 }
 
 fn normalize(value: &str) -> String {
@@ -289,5 +301,12 @@ mod tests {
                 .len(),
             3
         );
+    }
+
+    #[test]
+    fn natural_language_tolerates_singular_and_plural_themes() {
+        let catalog = CompanyCatalog::seeded();
+        let matches = catalog.search("AI chip companies").matches;
+        assert_eq!(matches[0].company.slug, "nvidia");
     }
 }

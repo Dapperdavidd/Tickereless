@@ -174,6 +174,9 @@ void main() {
 
     await tester.tap(find.byTooltip('Search'));
     await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'company behind Instagram');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
     expect(find.text('Meta Platforms'), findsOneWidget);
 
     await tester.tap(find.text('View Company →'));
@@ -200,6 +203,9 @@ void main() {
     await signIn(tester);
 
     await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'company behind Instagram');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();
@@ -238,6 +244,9 @@ void main() {
     await enterAsGuest(tester);
 
     await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'company behind Instagram');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();

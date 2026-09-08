@@ -7,6 +7,7 @@ use url::Url;
 use crate::{catalog::CompanyCatalog, models::LinkResolution};
 
 const MAX_PAGE_BYTES: u64 = 1_000_000;
+const MAX_REDIRECTS: usize = 5;
 
 pub enum LinkError {
     InvalidUrl,
@@ -21,25 +22,41 @@ pub async fn resolve<'a>(
     catalog: &'a CompanyCatalog,
     input: &str,
 ) -> Result<LinkResolution<'a>, LinkError> {
-    let url = validate_url(input)?;
-    let host = url.host_str().ok_or(LinkError::InvalidUrl)?.to_owned();
-    let port = url.port_or_known_default().ok_or(LinkError::InvalidUrl)?;
-    let address = safe_address(&host, port).await?;
-    let client = Client::builder()
-        .timeout(Duration::from_secs(10))
-        .redirect(Policy::none())
-        .user_agent("Tickerless/0.1 (+https://github.com/Dapperdavidd/Tickereless)")
-        .resolve(&host, address)
-        .build()
-        .map_err(|_| LinkError::FetchFailed)?;
-    let response = client
-        .get(url.clone())
-        .send()
-        .await
-        .map_err(|_| LinkError::FetchFailed)?;
-    if response.status().is_redirection() {
-        return Err(LinkError::RedirectNotAllowed);
-    }
+    let mut url = validate_url(input)?;
+    let mut redirects = 0;
+    let response = loop {
+        let host = url.host_str().ok_or(LinkError::InvalidUrl)?.to_owned();
+        let port = url.port_or_known_default().ok_or(LinkError::InvalidUrl)?;
+        let address = safe_address(&host, port).await?;
+        let client = Client::builder()
+            .timeout(Duration::from_secs(10))
+            .redirect(Policy::none())
+            .user_agent("Tickerless/0.1 (+https://github.com/Dapperdavidd/Tickereless)")
+            .resolve(&host, address)
+            .build()
+            .map_err(|_| LinkError::FetchFailed)?;
+        let response = client
+            .get(url.clone())
+            .send()
+            .await
+            .map_err(|_| LinkError::FetchFailed)?;
+        if !response.status().is_redirection() {
+            break response;
+        }
+        if redirects >= MAX_REDIRECTS {
+            return Err(LinkError::RedirectNotAllowed);
+        }
+        let location = response
+            .headers()
+            .get(reqwest::header::LOCATION)
+            .and_then(|value| value.to_str().ok())
+            .ok_or(LinkError::RedirectNotAllowed)?;
+        let next = url
+            .join(location)
+            .map_err(|_| LinkError::RedirectNotAllowed)?;
+        url = validate_url(next.as_str())?;
+        redirects += 1;
+    };
     if !response.status().is_success() {
         return Err(LinkError::FetchFailed);
     }

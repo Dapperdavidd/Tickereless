@@ -303,9 +303,12 @@ async fn resolve_link(state: web::Data<AppState>, body: web::Json<LinkRequest>) 
             "unsafe_url",
             "local and private-network URLs are not allowed",
         )),
-        Err(link::LinkError::RedirectNotAllowed) => HttpResponse::UnprocessableEntity().json(
-            ApiError::new("redirect_not_allowed", "redirecting URLs are not supported"),
-        ),
+        Err(link::LinkError::RedirectNotAllowed) => {
+            HttpResponse::UnprocessableEntity().json(ApiError::new(
+                "redirect_not_allowed",
+                "the URL redirected too many times or without a valid destination",
+            ))
+        }
         Err(link::LinkError::UnsupportedContent) => HttpResponse::UnsupportedMediaType().json(
             ApiError::new("unsupported_content", "URL must return HTML or plain text"),
         ),

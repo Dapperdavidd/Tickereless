@@ -4,6 +4,7 @@ import 'package:tickerless/features/auth/domain/repositories/auth_repository.dar
 import 'package:tickerless/features/discovery/domain/entities/company_match.dart';
 import 'package:tickerless/features/discovery/domain/entities/company.dart';
 import 'package:tickerless/features/discovery/domain/repositories/discovery_repository.dart';
+import 'package:tickerless/features/discovery/data/registry/demo_companies.dart';
 import 'package:tickerless/features/market/domain/entities/news_article.dart';
 import 'package:tickerless/features/market/domain/repositories/news_repository.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
@@ -86,11 +87,16 @@ class FakeNewsRepository implements NewsRepository {
   ];
 }
 
-/// The screens all open on their own worked examples, so the flows under test
-/// never need the resolver to answer.
+/// A deterministic resolver response used only after the UI submits a query.
 class FakeDiscoveryRepository implements DiscoveryRepository {
   @override
-  Future<List<CompanyMatch>> search(String query) async => const [];
+  Future<List<CompanyMatch>> search(String query) async => const [
+    CompanyMatch(
+      company: DemoCompanies.meta,
+      reason: 'Instagram is associated with Meta Platforms.',
+      confidence: .95,
+    ),
+  ];
 
   @override
   Future<List<CompanyMatch>> resolveLink(String url) async => const [];

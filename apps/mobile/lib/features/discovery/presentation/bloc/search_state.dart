@@ -8,7 +8,7 @@ abstract class SearchState extends Equatable {
   List<Object?> get props => [];
 }
 
-/// Nothing asked yet — the screen shows its worked example.
+/// Nothing asked yet — no result is implied until the resolver answers.
 class SearchInitial extends SearchState {
   const SearchInitial();
 }

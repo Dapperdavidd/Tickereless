@@ -28,6 +28,8 @@ class _LensScreenState extends State<LensScreen> {
   CameraController? _camera;
   bool _flashOn = false;
   bool _capturing = false;
+  bool _initializingCamera = true;
+  bool _cameraUnavailable = false;
 
   @override
   void initState() {
@@ -44,7 +46,15 @@ class _LensScreenState extends State<LensScreen> {
   Future<void> _initializeCamera() async {
     try {
       final devices = await availableCameras();
-      if (devices.isEmpty) return;
+      if (devices.isEmpty) {
+        if (mounted) {
+          setState(() {
+            _initializingCamera = false;
+            _cameraUnavailable = true;
+          });
+        }
+        return;
+      }
 
       final controller = CameraController(
         devices.first,
@@ -56,10 +66,17 @@ class _LensScreenState extends State<LensScreen> {
         await controller.dispose();
         return;
       }
-      setState(() => _camera = controller);
+      setState(() {
+        _camera = controller;
+        _initializingCamera = false;
+      });
     } catch (_) {
-      // No camera here — the simulator, or permission refused. The demo path
-      // below takes over, and says so.
+      if (mounted) {
+        setState(() {
+          _initializingCamera = false;
+          _cameraUnavailable = true;
+        });
+      }
     }
   }
 
@@ -68,9 +85,15 @@ class _LensScreenState extends State<LensScreen> {
     if (_capturing) return;
 
     if (camera == null || !camera.value.isInitialized) {
-      // The preview asset is an iPhone, so this is a deterministic demo input
-      // rather than a fallback pretending recognition happened.
-      context.read<LensBloc>().add(const LensDemoScanRequested('iPhone Apple'));
+      if (_cameraUnavailable) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Lens needs a real camera. Run Tickerless on an iPhone to scan.',
+            ),
+          ),
+        );
+      }
       return;
     }
 
@@ -137,7 +160,10 @@ class _LensScreenState extends State<LensScreen> {
                   bottom: 28,
                   child: _LensReadout(
                     state: state,
-                    busy: _capturing || state is LensScanning,
+                    busy:
+                        _initializingCamera ||
+                        _capturing ||
+                        state is LensScanning,
                     onScan: _scan,
                   ),
                 ),

@@ -5,8 +5,6 @@ import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/core/widgets/hairline_list.dart';
-import 'package:tickerless/features/discovery/data/registry/demo_companies.dart';
-import 'package:tickerless/features/discovery/domain/entities/company_match.dart';
 import 'package:tickerless/features/discovery/domain/entities/discovery_source.dart';
 import 'package:tickerless/features/discovery/presentation/bloc/link_bloc.dart';
 import 'package:tickerless/features/discovery/presentation/bloc/link_event.dart';
@@ -22,24 +20,7 @@ class LinkScreen extends StatefulWidget {
 }
 
 class _LinkScreenState extends State<LinkScreen> {
-  final _controller = TextEditingController(
-    text: 'https://www.nvidia.com/en-us/',
-  );
-
-  /// What the screen shows before the first analysis — a worked example, not
-  /// a claim about the URL in the field.
-  static const _example = [
-    CompanyMatch(
-      company: DemoCompanies.nvidia,
-      reason: 'Primary subject · AI hardware',
-      confidence: .92,
-    ),
-    CompanyMatch(
-      company: DemoCompanies.alphabet,
-      reason: 'Mentioned in the article',
-      confidence: .24,
-    ),
-  ];
+  final _controller = TextEditingController();
 
   @override
   void dispose() {
@@ -58,7 +39,7 @@ class _LinkScreenState extends State<LinkScreen> {
     body: BlocBuilder<LinkBloc, LinkState>(
       builder: (context, state) {
         final analyzing = state is LinkAnalyzing;
-        final matches = state is LinkAnalyzed ? state.matches : _example;
+        final matches = state is LinkAnalyzed ? state.matches : const [];
 
         return ListView(
           padding: const EdgeInsets.all(20),
@@ -69,6 +50,7 @@ class _LinkScreenState extends State<LinkScreen> {
               textInputAction: TextInputAction.go,
               onSubmitted: (_) => _analyze(),
               decoration: InputDecoration(
+                hintText: 'Paste an article or website URL',
                 prefixIcon: const Icon(Icons.link),
                 suffixIcon: IconButton(
                   onPressed: _analyze,
@@ -77,45 +59,13 @@ class _LinkScreenState extends State<LinkScreen> {
               ),
             ),
             const SizedBox(height: 14),
-            GestureDetector(
-              onTap: analyzing ? null : _analyze,
-              behavior: HitTestBehavior.opaque,
-              child: const Row(
-                children: [
-                  _PagePreviewThumb(),
-                  SizedBox(width: 13),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'NVIDIA',
-                          style: TextStyle(
-                            color: AppColors.muted,
-                            fontSize: 10.5,
-                          ),
-                        ),
-                        SizedBox(height: 4),
-                        Text(
-                          'The next generation of AI computing',
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            height: 1.2,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Icon(
-                    Icons.north_east_rounded,
-                    size: 16,
-                    color: AppColors.muted,
-                  ),
-                ],
+            if (state is LinkInitial) ...[
+              const Text(
+                'Tickerless reads the public page and identifies supported companies from its actual content.',
+                style: TextStyle(color: AppColors.muted, height: 1.5),
               ),
-            ),
-            const SizedBox(height: 12),
+              const SizedBox(height: 12),
+            ],
             OutlinedButton(
               onPressed: analyzing ? null : _analyze,
               child: Text(analyzing ? 'Analyzing…' : 'Analyze Link'),
@@ -134,7 +84,7 @@ class _LinkScreenState extends State<LinkScreen> {
               style: TextStyle(fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 10),
-            if (!analyzing && matches.isEmpty)
+            if (state is LinkAnalyzed && matches.isEmpty)
               const Text(
                 'No supported companies were detected on this page.',
                 style: TextStyle(color: AppColors.muted, height: 1.5),
@@ -162,21 +112,6 @@ class _LinkScreenState extends State<LinkScreen> {
         );
       },
     ),
-  );
-}
-
-class _PagePreviewThumb extends StatelessWidget {
-  const _PagePreviewThumb();
-
-  @override
-  Widget build(BuildContext context) => Container(
-    width: 64,
-    height: 64,
-    decoration: BoxDecoration(
-      color: const Color(0xFF9BFF00).withValues(alpha: .13),
-      borderRadius: BorderRadius.circular(14),
-    ),
-    child: const Icon(Icons.memory, color: Color(0xFF9BFF00), size: 30),
   );
 }
 
