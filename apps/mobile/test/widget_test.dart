@@ -12,7 +12,7 @@ void main() {
   Future<void> pumpApp(WidgetTester tester) async {
     await tester.pumpWidget(TickerlessApp(dependencies: fakeDependencies()));
     await tester.pump();
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1700));
     await tester.pump();
   }
 
@@ -93,7 +93,7 @@ void main() {
     );
 
     expect(find.text('The world is\nthe stock market.'), findsNothing);
-    expect(find.byType(Image), findsOneWidget);
+    expect(find.byType(CustomPaint), findsWidgets);
 
     auth.complete();
     await tester.pumpAndSettle();

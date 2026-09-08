@@ -46,13 +46,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthRestoreRequested event,
     Emitter<AuthState> emit,
   ) async {
+    final minimumBrandFrame = Future<void>.delayed(
+      const Duration(milliseconds: 1650),
+    );
     try {
       final session = await _restoreSession();
       if (session == null) {
+        await minimumBrandFrame;
         emit(const AuthState(status: AuthStatus.idle));
         return;
       }
       final wallet = await _ensureWallet(session.userId);
+      await minimumBrandFrame;
       emit(
         AuthState(
           mode: AccessMode.authenticated,
@@ -61,6 +66,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         ),
       );
     } on Failure {
+      await minimumBrandFrame;
       emit(const AuthState(status: AuthStatus.idle));
     }
   }

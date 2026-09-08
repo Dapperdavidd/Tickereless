@@ -80,10 +80,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
                   title: 'Featured',
                   trailing: switch (state) {
                     PortfolioLoaded() =>
-                      'Your World · \$${state.total.toStringAsFixed(2)}',
-                    _ => 'Your World',
+                      'Your Assets · \$${state.total.toStringAsFixed(2)}',
+                    _ => 'Your Assets',
                   },
-                  onTrailingTap: () => context.go(AppRoutes.world),
+                  onTrailingTap: () => context.go(AppRoutes.activity),
                 ),
               ),
             ),
