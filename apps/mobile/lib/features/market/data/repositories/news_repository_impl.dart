@@ -68,13 +68,16 @@ class OfficialNewsRepository implements NewsRepository {
           final published =
               item.getElement('pubDate')?.innerText.trim() ??
               item.getElement('updated')?.innerText.trim();
+          final publishedAt = _publishedAt(published);
+          if (publishedAt == null) return null;
           return NewsArticle(
             headline: title,
             source: _sourceName(ticker),
-            publishedAt: _publishedAt(published),
+            publishedAt: publishedAt,
             url: url,
           );
         })
+        .whereType<NewsArticle>()
         .toList(growable: false);
   }
 
@@ -90,12 +93,12 @@ class OfficialNewsRepository implements NewsRepository {
     _ => ticker,
   };
 
-  static DateTime _publishedAt(String? value) {
-    if (value == null) return DateTime.now();
+  static DateTime? _publishedAt(String? value) {
+    if (value == null) return null;
     try {
       return HttpDate.parse(value);
     } catch (_) {
-      return DateTime.tryParse(value) ?? DateTime.now();
+      return DateTime.tryParse(value);
     }
   }
 }

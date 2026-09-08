@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
@@ -28,15 +30,21 @@ class _WorldScreenState extends State<WorldScreen> {
   final _searchController = TextEditingController();
   String _query = '';
   late Future<List<_CompanyStory>> _stories;
+  Timer? _refreshTimer;
 
   @override
   void initState() {
     super.initState();
     _stories = _load();
+    _refreshTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => _refresh(),
+    );
   }
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }

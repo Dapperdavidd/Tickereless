@@ -34,4 +34,17 @@ void main() {
 
     expect(await repository.forCompany('UNKNOWN'), isEmpty);
   });
+
+  test('missing publisher dates are not presented as breaking news', () async {
+    final repository = OfficialNewsRepository(
+      client: MockClient(
+        (_) async => http.Response(
+          '<rss><channel><item><title>Undated</title><link>https://example.com</link></item></channel></rss>',
+          200,
+        ),
+      ),
+    );
+
+    expect(await repository.forCompany('AAPL'), isEmpty);
+  });
 }
