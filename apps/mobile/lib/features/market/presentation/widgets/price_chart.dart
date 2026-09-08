@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tickerless/features/market/domain/entities/price_series.dart';
 
 /// The price line, drawn edge to edge with a brand-coloured bloom behind it.
@@ -24,6 +25,8 @@ class PriceChart extends StatefulWidget {
 
 class _PriceChartState extends State<PriceChart>
     with SingleTickerProviderStateMixin {
+  int? _selectedIndex;
+
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 620),
@@ -35,8 +38,18 @@ class _PriceChartState extends State<PriceChart>
     // Switching range redraws the line from the left rather than morphing
     // between two unrelated shapes.
     if (oldWidget.series.range != widget.series.range) {
+      _selectedIndex = null;
       _controller.forward(from: 0);
     }
+  }
+
+  void _select(double x, double width) {
+    if (widget.series.values.isEmpty || width <= 0) return;
+    final last = widget.series.values.length - 1;
+    final index = ((x.clamp(0, width) / width) * last).round();
+    if (index == _selectedIndex) return;
+    setState(() => _selectedIndex = index);
+    HapticFeedback.selectionClick();
   }
 
   @override
@@ -46,20 +59,87 @@ class _PriceChartState extends State<PriceChart>
   }
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: widget.height,
-    width: double.infinity,
-    child: AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) => CustomPaint(
-        painter: _PriceChartPainter(
-          values: widget.series.values,
-          color: widget.color,
-          progress: Curves.easeOutCubic.transform(_controller.value),
+  Widget build(BuildContext context) {
+    final selected = _selectedIndex;
+    final value = selected == null ? null : widget.series.values[selected];
+    return Semantics(
+      label: 'Price chart for ${widget.series.range.label}',
+      value: value == null
+          ? 'From ${widget.series.open.toStringAsFixed(2)} to ${widget.series.close.toStringAsFixed(2)} dollars. Drag across the chart for details.'
+          : '${value.toStringAsFixed(2)} dollars, point ${selected! + 1} of ${widget.series.values.length}',
+      child: SizedBox(
+        height: widget.height,
+        width: double.infinity,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final markerX = selected == null || widget.series.values.length < 2
+                ? 0.0
+                : width * selected / (widget.series.values.length - 1);
+            final tooltipLeft = (markerX - 40).clamp(
+              8.0,
+              (width - 88).clamp(8.0, double.infinity),
+            );
+            return GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTapDown: (details) => _select(details.localPosition.dx, width),
+              onHorizontalDragStart: (details) =>
+                  _select(details.localPosition.dx, width),
+              onHorizontalDragUpdate: (details) =>
+                  _select(details.localPosition.dx, width),
+              onHorizontalDragEnd: (_) => setState(() => _selectedIndex = null),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, child) => CustomPaint(
+                        painter: _PriceChartPainter(
+                          values: widget.series.values,
+                          color: widget.color,
+                          progress: Curves.easeOutCubic.transform(
+                            _controller.value,
+                          ),
+                          selectedIndex: selected,
+                        ),
+                      ),
+                    ),
+                  ),
+                  if (value != null)
+                    Positioned(
+                      top: 6,
+                      left: tooltipLeft,
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surface,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: Theme.of(context).dividerColor,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 7,
+                          ),
+                          child: Text(
+                            '\$${value.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          },
         ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _PriceChartPainter extends CustomPainter {
@@ -67,11 +147,13 @@ class _PriceChartPainter extends CustomPainter {
     required this.values,
     required this.color,
     required this.progress,
+    required this.selectedIndex,
   });
 
   final List<double> values;
   final Color color;
   final double progress;
+  final int? selectedIndex;
 
   /// Vertical breathing room so the peak and trough never touch the edges.
   static const _inset = 26.0;
@@ -152,11 +234,26 @@ class _PriceChartPainter extends CustomPainter {
         ..drawCircle(head, 7, Paint()..color = color.withValues(alpha: .22))
         ..drawCircle(head, 3, Paint()..color = color);
     }
+
+    if (selectedIndex case final index?) {
+      final selected = pointAt(index);
+      canvas
+        ..drawLine(
+          Offset(selected.dx, _inset),
+          Offset(selected.dx, size.height - _inset),
+          Paint()
+            ..color = color.withValues(alpha: .38)
+            ..strokeWidth = 1,
+        )
+        ..drawCircle(selected, 8, Paint()..color = color.withValues(alpha: .2))
+        ..drawCircle(selected, 4, Paint()..color = color);
+    }
   }
 
   @override
   bool shouldRepaint(_PriceChartPainter oldDelegate) =>
       oldDelegate.progress != progress ||
       oldDelegate.values != values ||
-      oldDelegate.color != color;
+      oldDelegate.color != color ||
+      oldDelegate.selectedIndex != selectedIndex;
 }

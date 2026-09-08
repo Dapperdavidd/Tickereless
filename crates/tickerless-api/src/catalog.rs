@@ -277,6 +277,33 @@ fn seed_companies() -> Vec<Company> {
                 .collect(),
             asset: asset("tNVDAc"),
         },
+        Company {
+            slug: "microsoft".to_owned(),
+            name: "Microsoft".to_owned(),
+            ticker: "MSFT".to_owned(),
+            description: "Technology company behind Windows, Surface, Xbox, Azure, and Copilot."
+                .to_owned(),
+            aliases: [
+                "Windows",
+                "Surface",
+                "Surface Laptop",
+                "Surface Pro",
+                "Xbox",
+                "Azure",
+                "Copilot",
+                "Microsoft 365",
+                "Office",
+                "Teams",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+            themes: ["personal computing", "cloud computing", "gaming"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+            asset: None,
+        },
     ]
 }
 

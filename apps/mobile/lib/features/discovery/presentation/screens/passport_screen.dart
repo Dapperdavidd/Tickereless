@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
@@ -49,6 +50,71 @@ class _PassportView extends StatelessWidget {
   const _PassportView({required this.args});
 
   final PassportArgs args;
+
+  Future<void> _copySnapshot(BuildContext context) async {
+    final company = args.company;
+    await Clipboard.setData(
+      ClipboardData(
+        text:
+            '${company.name} (${company.ticker}) on Tickerless\n'
+            'Indicative price: \$${company.price.toStringAsFixed(2)}\n'
+            '${company.description}',
+      ),
+    );
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Company snapshot copied.')));
+  }
+
+  void _showDetails(BuildContext context) {
+    final supported = ChainConfig.assets.containsKey(args.company.ticker);
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 4, 24, 26),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'About this passport',
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 18),
+              const _DisclosureRow(
+                icon: Icons.query_stats_rounded,
+                title: 'Market view',
+                detail:
+                    'Illustrative data, clearly marked when it is demo data.',
+              ),
+              const SizedBox(height: 17),
+              _DisclosureRow(
+                icon: Icons.account_balance_wallet_outlined,
+                title: 'Ownership',
+                detail: supported
+                    ? 'Available as a test token on Base Sepolia.'
+                    : 'News and discovery only; no test token is deployed.',
+              ),
+              const SizedBox(height: 17),
+              _DisclosureRow(
+                icon: Icons.travel_explore_rounded,
+                title: 'Discovery source',
+                detail: args.source,
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Tickerless test assets have no monetary value and are not shares in the underlying company.',
+                style: TextStyle(color: AppColors.muted, fontSize: 11.5),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   /// Guests get this far on purpose: discovery is open, ownership is not.
   void _own(BuildContext context) {
@@ -116,11 +182,13 @@ class _PassportView extends StatelessWidget {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
+            tooltip: 'Copy company snapshot',
+            onPressed: () => _copySnapshot(context),
             icon: const Icon(Icons.ios_share_outlined, size: 21),
           ),
           IconButton(
-            onPressed: () {},
+            tooltip: 'About this passport',
+            onPressed: () => _showDetails(context),
             icon: const Icon(Icons.more_vert_rounded, size: 21),
           ),
         ],
@@ -309,78 +377,122 @@ class _PassportTabsState extends State<_PassportTabs> {
   int _index = 0;
 
   @override
-  Widget build(BuildContext context) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(
-          children: [
-            for (final (index, tab) in _tabs.indexed)
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => setState(() => _index = index),
-                  behavior: HitTestBehavior.opaque,
-                  child: Column(
-                    children: [
-                      Text(
-                        tab,
-                        style: TextStyle(
-                          color: index == _index
-                              ? Colors.white
-                              : AppColors.muted,
-                          fontSize: 13,
-                          fontWeight: index == _index
-                              ? FontWeight.w700
-                              : FontWeight.w500,
-                        ),
-                      ),
-                      const SizedBox(height: 9),
-                      // The rule under the active tab is the only selected
-                      // state, so it carries the full weight.
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        height: 2,
-                        color: index == _index
-                            ? Colors.white
-                            : Colors.transparent,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-      Padding(
-        padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-        child: switch (_index) {
-          0 => Text(
-            widget.company.description,
-            style: const TextStyle(height: 1.55, color: Color(0xFFD4DEE3)),
-          ),
-          1 => Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) {
+    final foreground = Theme.of(context).colorScheme.onSurface;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          child: Row(
             children: [
-              for (final product in widget.company.products)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 13),
-                  child: Row(
-                    children: [
-                      const Icon(
-                        Icons.chevron_right_rounded,
-                        size: 16,
-                        color: AppColors.muted,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(product, style: const TextStyle(fontSize: 14.5)),
-                    ],
+              for (final (index, tab) in _tabs.indexed)
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _index = index),
+                    behavior: HitTestBehavior.opaque,
+                    child: Column(
+                      children: [
+                        Text(
+                          tab,
+                          style: TextStyle(
+                            color: index == _index
+                                ? foreground
+                                : AppColors.muted,
+                            fontSize: 13,
+                            fontWeight: index == _index
+                                ? FontWeight.w700
+                                : FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 9),
+                        // The rule under the active tab is the only selected
+                        // state, so it carries the full weight.
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          height: 2,
+                          color: index == _index
+                              ? foreground
+                              : Colors.transparent,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
             ],
           ),
-          _ => NewsList(articles: widget.articles),
-        },
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+          child: switch (_index) {
+            0 => Text(
+              widget.company.description,
+              style: TextStyle(
+                height: 1.55,
+                color: foreground.withValues(alpha: .82),
+              ),
+            ),
+            1 => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                for (final product in widget.company.products)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 13),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.chevron_right_rounded,
+                          size: 16,
+                          color: AppColors.muted,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(product, style: const TextStyle(fontSize: 14.5)),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+            _ => NewsList(articles: widget.articles),
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _DisclosureRow extends StatelessWidget {
+  const _DisclosureRow({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+
+  final IconData icon;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(icon, size: 20, color: AppColors.blue),
+      const SizedBox(width: 12),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+            const SizedBox(height: 3),
+            Text(
+              detail,
+              style: const TextStyle(
+                color: AppColors.muted,
+                fontSize: 12.5,
+                height: 1.4,
+              ),
+            ),
+          ],
+        ),
       ),
     ],
   );
@@ -449,9 +561,9 @@ class _OwnBarState extends State<_OwnBar> {
   Widget build(BuildContext context) {
     final supported = ChainConfig.assets.containsKey(widget.company.ticker);
     return DecoratedBox(
-      decoration: const BoxDecoration(
-        color: AppColors.background,
-        border: Border(top: BorderSide(color: AppColors.border)),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface,
+        border: Border(top: BorderSide(color: Theme.of(context).dividerColor)),
       ),
       child: SafeArea(
         top: false,

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -19,6 +21,7 @@ import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.
 import 'package:tickerless/features/profile/presentation/widgets/current_profile_avatar.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
+import 'package:tickerless/features/wallet/presentation/widgets/token_logo.dart';
 import 'package:wallet/wallet.dart';
 
 /// Wallet identity, owned assets, and the transactions that produced them.
@@ -36,18 +39,98 @@ class ActivityScreen extends StatelessWidget {
           if (address == null) {
             return _WalletBody(address: null, portfolio: portfolio);
           }
-          return FutureBuilder<OnChainSnapshot>(
-            future: context.read<ChainGateway>().snapshot(address),
-            builder: (context, snapshot) => _WalletBody(
-              address: address,
-              portfolio: portfolio,
-              chain: snapshot.data,
-              chainError: snapshot.hasError,
-            ),
+          return _LiveWallet(
+            key: ValueKey(address),
+            address: address,
+            portfolio: portfolio,
           );
         },
       );
     },
+  );
+}
+
+/// Keeps the on-chain snapshot live while the wallet tab remains mounted.
+/// Polling catches incoming transfers; lifecycle refresh catches funds received
+/// while the app was backgrounded; explicit refreshes cover in-app sends.
+class _LiveWallet extends StatefulWidget {
+  const _LiveWallet({
+    required this.address,
+    required this.portfolio,
+    super.key,
+  });
+
+  final String address;
+  final PortfolioState portfolio;
+
+  @override
+  State<_LiveWallet> createState() => _LiveWalletState();
+}
+
+class _LiveWalletState extends State<_LiveWallet> with WidgetsBindingObserver {
+  static const _pollInterval = Duration(seconds: 12);
+  Timer? _timer;
+  OnChainSnapshot? _snapshot;
+  DateTime? _lastSynced;
+  bool _refreshing = false;
+  bool _chainError = false;
+  bool _balancesHidden = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    unawaited(_refresh());
+    _timer = Timer.periodic(_pollInterval, (_) => unawaited(_refresh()));
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) unawaited(_refresh());
+  }
+
+  Future<OnChainSnapshot> _fetch() =>
+      context.read<ChainGateway>().snapshot(widget.address);
+
+  Future<void> _refresh() async {
+    if (!mounted || _refreshing) return;
+    setState(() => _refreshing = true);
+    try {
+      final next = await _fetch();
+      if (!mounted) return;
+      setState(() {
+        _snapshot = next;
+        _lastSynced = DateTime.now();
+        _chainError = false;
+        _refreshing = false;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _chainError = true;
+        _refreshing = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => _WalletBody(
+    address: widget.address,
+    portfolio: widget.portfolio,
+    chain: _snapshot,
+    chainError: _chainError,
+    isRefreshing: _refreshing,
+    lastSynced: _lastSynced,
+    balancesHidden: _balancesHidden,
+    onToggleBalances: () => setState(() => _balancesHidden = !_balancesHidden),
+    onRefresh: _refresh,
   );
 }
 
@@ -57,11 +140,21 @@ class _WalletBody extends StatelessWidget {
     required this.portfolio,
     this.chain,
     this.chainError = false,
+    this.isRefreshing = false,
+    this.balancesHidden = false,
+    this.lastSynced,
+    this.onToggleBalances,
+    this.onRefresh,
   });
   final String? address;
   final PortfolioState portfolio;
   final OnChainSnapshot? chain;
   final bool chainError;
+  final bool isRefreshing;
+  final bool balancesHidden;
+  final DateTime? lastSynced;
+  final VoidCallback? onToggleBalances;
+  final Future<void> Function()? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -85,8 +178,10 @@ class _WalletBody extends StatelessWidget {
 
     return SafeArea(
       child: RefreshIndicator(
-        onRefresh: () async =>
-            context.read<PortfolioBloc>().add(const PortfolioRequested()),
+        onRefresh: () async {
+          context.read<PortfolioBloc>().add(const PortfolioRequested());
+          await onRefresh?.call();
+        },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
           children: [
@@ -114,34 +209,94 @@ class _WalletBody extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            Text(
-              '\$${total.toStringAsFixed(2)}',
-              style: const TextStyle(
-                fontSize: 46,
-                height: 1,
-                fontWeight: FontWeight.w500,
-                letterSpacing: -2,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    balancesHidden ? '••••••' : '\$${total.toStringAsFixed(2)}',
+                    semanticsLabel: balancesHidden
+                        ? 'Wallet balance hidden'
+                        : 'Wallet balance ${total.toStringAsFixed(2)} dollars',
+                    style: const TextStyle(
+                      fontSize: 46,
+                      height: 1,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: -2,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  onPressed: onToggleBalances,
+                  tooltip: balancesHidden ? 'Show balances' : 'Hide balances',
+                  icon: Icon(
+                    balancesHidden
+                        ? Icons.visibility_off_outlined
+                        : Icons.visibility_outlined,
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
-            Text(
-              '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}% today',
-              style: TextStyle(
-                color: dailyChange >= 0 ? AppColors.green : AppColors.red,
-                fontWeight: FontWeight.w700,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    balancesHidden
+                        ? 'Performance hidden'
+                        : '${dailyChange >= 0 ? '+' : ''}${dailyChange.toStringAsFixed(2)}% today',
+                    style: TextStyle(
+                      color: balancesHidden
+                          ? AppColors.muted
+                          : dailyChange >= 0
+                          ? AppColors.green
+                          : AppColors.red,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: isRefreshing ? null : onRefresh,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (isRefreshing)
+                          const SizedBox(
+                            width: 12,
+                            height: 12,
+                            child: CircularProgressIndicator(strokeWidth: 1.5),
+                          )
+                        else
+                          Icon(
+                            chainError
+                                ? Icons.cloud_off_outlined
+                                : Icons.cloud_done_outlined,
+                            size: 14,
+                            color: chainError ? AppColors.red : AppColors.green,
+                          ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _syncLabel(),
+                          style: const TextStyle(
+                            color: AppColors.muted,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
             const SizedBox(height: 28),
             Row(
               children: [
-                for (final action in [
-                  (
-                    Icons.add_rounded,
-                    'Deposit',
-                    address == null
-                        ? null
-                        : () => _showReceive(context, address!),
-                  ),
+                for (final (index, action) in [
                   (
                     Icons.arrow_upward_rounded,
                     'Send',
@@ -154,21 +309,13 @@ class _WalletBody extends StatelessWidget {
                         ? null
                         : () => _showReceive(context, address!),
                   ),
-                  (
-                    Icons.swap_horiz_rounded,
-                    'Swap',
-                    () => ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                          'Swap is unavailable on the Base Sepolia test market.',
-                        ),
-                      ),
-                    ),
-                  ),
-                ])
+                ].indexed)
                   Expanded(
                     child: Padding(
-                      padding: const EdgeInsets.only(right: 8),
+                      padding: EdgeInsets.only(
+                        left: index == 0 ? 0 : 5,
+                        right: index == 1 ? 0 : 5,
+                      ),
                       child: _WalletAction(
                         icon: action.$1,
                         label: action.$2,
@@ -190,10 +337,13 @@ class _WalletBody extends StatelessWidget {
               HairlineList(
                 gap: 22,
                 children: [
-                  _UsdcRow(balance: chain!.usdc),
-                  _EthRow(balance: chain!.eth),
+                  _UsdcRow(balance: chain!.usdc, balanceHidden: balancesHidden),
+                  _EthRow(balance: chain!.eth, balanceHidden: balancesHidden),
                   for (final position in positions)
-                    _AssetRow(position: position),
+                    _AssetRow(
+                      position: position,
+                      balanceHidden: balancesHidden,
+                    ),
                 ],
               )
             else if (chainError)
@@ -286,8 +436,8 @@ class _WalletBody extends StatelessWidget {
     );
   }
 
-  void _showSend(BuildContext context, OnChainSnapshot balance) {
-    showModalBottomSheet<void>(
+  Future<void> _showSend(BuildContext context, OnChainSnapshot balance) async {
+    final sent = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
@@ -296,12 +446,27 @@ class _WalletBody extends StatelessWidget {
         child: _SendSheet(balance: balance, gateway: context.read()),
       ),
     );
+    if (sent == true) await onRefresh?.call();
+  }
+
+  String _syncLabel() {
+    if (isRefreshing && chain == null) return 'Connecting…';
+    if (isRefreshing) return 'Updating…';
+    if (chainError) {
+      return chain == null ? 'Unavailable · Retry' : 'Offline · Retry';
+    }
+    final synced = lastSynced;
+    if (synced == null) return 'Base Sepolia';
+    final elapsed = DateTime.now().difference(synced);
+    if (elapsed.inMinutes < 1) return 'Live · now';
+    return 'Live · ${elapsed.inMinutes}m ago';
   }
 }
 
 class _UsdcRow extends StatelessWidget {
-  const _UsdcRow({required this.balance});
+  const _UsdcRow({required this.balance, required this.balanceHidden});
   final double balance;
+  final bool balanceHidden;
 
   @override
   Widget build(BuildContext context) => InkWell(
@@ -314,11 +479,7 @@ class _UsdcRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 21,
-            backgroundColor: Color(0xFF2775CA),
-            child: Text(r'$ ', style: TextStyle(fontWeight: FontWeight.w800)),
-          ),
+          const TokenLogo(symbol: 'USDC', size: 42),
           const SizedBox(width: 13),
           const Expanded(
             child: Column(
@@ -333,7 +494,7 @@ class _UsdcRow extends StatelessWidget {
             ),
           ),
           Text(
-            '\$${balance.toStringAsFixed(2)}',
+            balanceHidden ? '••••' : '\$${balance.toStringAsFixed(2)}',
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(width: 6),
@@ -387,8 +548,9 @@ class _AddressPill extends StatelessWidget {
 }
 
 class _EthRow extends StatelessWidget {
-  const _EthRow({required this.balance});
+  const _EthRow({required this.balance, required this.balanceHidden});
   final double balance;
+  final bool balanceHidden;
   @override
   Widget build(BuildContext context) => InkWell(
     borderRadius: BorderRadius.circular(14),
@@ -400,11 +562,7 @@ class _EthRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          const CircleAvatar(
-            radius: 21,
-            backgroundColor: Color(0xFF235BFF),
-            child: Icon(Icons.diamond_outlined, color: Colors.white, size: 20),
-          ),
+          const TokenLogo(symbol: 'ETH', size: 42),
           const SizedBox(width: 13),
           const Expanded(
             child: Column(
@@ -422,7 +580,7 @@ class _EthRow extends StatelessWidget {
             ),
           ),
           Text(
-            balance.toStringAsFixed(6),
+            balanceHidden ? '••••' : balance.toStringAsFixed(6),
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(width: 6),
@@ -492,7 +650,7 @@ class _SendSheetState extends State<_SendSheet> {
     super.dispose();
   }
 
-  Future<void> _send() async {
+  Future<void> _reviewAndSend() async {
     final session = context.read<AuthBloc>().state.session;
     final amount = double.tryParse(_amount.text.trim());
     final recipient = _recipient.text.trim();
@@ -517,11 +675,23 @@ class _SendSheetState extends State<_SendSheet> {
       setState(() => _error = 'Leave some ETH behind for the network fee.');
       return;
     }
+    FocusManager.instance.primaryFocus?.unfocus();
+    final confirmed = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => _TransferReviewSheet(
+        asset: _asset,
+        amount: amount,
+        recipient: recipient,
+      ),
+    );
+    if (confirmed != true || !mounted) return;
     setState(() {
       _sending = true;
       _error = null;
     });
     try {
+      await HapticFeedback.mediumImpact();
       if (_asset == 'USDC') {
         await widget.gateway.sendUsdc(
           userId: session.userId,
@@ -537,7 +707,7 @@ class _SendSheetState extends State<_SendSheet> {
       }
       if (!mounted) return;
       final messenger = ScaffoldMessenger.of(context);
-      Navigator.pop(context);
+      Navigator.pop(context, true);
       messenger.showSnackBar(
         SnackBar(content: Text('$amount $_asset sent on Base Sepolia.')),
       );
@@ -602,7 +772,7 @@ class _SendSheetState extends State<_SendSheet> {
             ],
             const SizedBox(height: 20),
             FilledButton(
-              onPressed: _sending ? null : _send,
+              onPressed: _sending ? null : _reviewAndSend,
               child: Text(_sending ? 'Confirming on Base…' : 'Review and send'),
             ),
             const SizedBox(height: 8),
@@ -615,6 +785,124 @@ class _SendSheetState extends State<_SendSheet> {
       ),
     );
   }
+}
+
+class _TransferReviewSheet extends StatelessWidget {
+  const _TransferReviewSheet({
+    required this.asset,
+    required this.amount,
+    required this.recipient,
+  });
+
+  final String asset;
+  final double amount;
+  final String recipient;
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.verified_user_outlined, color: AppColors.blue),
+              SizedBox(width: 10),
+              Text(
+                'Review transaction',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Confirm every detail before this transaction is submitted.',
+            style: TextStyle(color: AppColors.muted, height: 1.4),
+          ),
+          const SizedBox(height: 22),
+          _ReviewRow(
+            label: 'You send',
+            value: '${_formatAmount(amount)} $asset',
+          ),
+          const Divider(height: 26, color: AppColors.border),
+          _ReviewRow(label: 'Network', value: 'Base Sepolia'),
+          const Divider(height: 26, color: AppColors.border),
+          const _ReviewRow(
+            label: 'Network fee',
+            value: 'Calculated on submission',
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            'Recipient',
+            style: TextStyle(color: AppColors.muted, fontSize: 12),
+          ),
+          const SizedBox(height: 7),
+          SelectableText(
+            recipient,
+            style: const TextStyle(fontSize: 13, height: 1.4),
+          ),
+          const SizedBox(height: 20),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(13),
+            decoration: BoxDecoration(
+              color: AppColors.blue.withValues(alpha: .1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'TESTNET · These assets have no monetary value. Transactions cannot be undone after submission.',
+              style: TextStyle(fontSize: 11.5, height: 1.4),
+            ),
+          ),
+          const SizedBox(height: 20),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Confirm and send'),
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Go back and edit'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  static String _formatAmount(double value) {
+    if (value.truncateToDouble() == value) return value.toStringAsFixed(0);
+    return value
+        .toStringAsFixed(6)
+        .replaceFirst(RegExp(r'0+$'), '')
+        .replaceFirst(RegExp(r'\.$'), '');
+  }
+}
+
+class _ReviewRow extends StatelessWidget {
+  const _ReviewRow({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: const TextStyle(color: AppColors.muted, fontSize: 13)),
+      const SizedBox(width: 16),
+      Expanded(
+        child: Text(
+          value,
+          textAlign: TextAlign.end,
+          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+        ),
+      ),
+    ],
+  );
 }
 
 class _SectionHeading extends StatelessWidget {
@@ -639,8 +927,9 @@ class _SectionHeading extends StatelessWidget {
 }
 
 class _AssetRow extends StatelessWidget {
-  const _AssetRow({required this.position});
+  const _AssetRow({required this.position, required this.balanceHidden});
   final OwnedPosition position;
+  final bool balanceHidden;
   @override
   Widget build(BuildContext context) => InkWell(
     borderRadius: BorderRadius.circular(14),
@@ -677,11 +966,15 @@ class _AssetRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '\$${position.invested.toStringAsFixed(2)}',
+                balanceHidden
+                    ? '••••'
+                    : '\$${position.invested.toStringAsFixed(2)}',
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               Text(
-                '${position.tokens.toStringAsFixed(4)} tokens',
+                balanceHidden
+                    ? 'Hidden'
+                    : '${position.tokens.toStringAsFixed(4)} tokens',
                 style: const TextStyle(color: AppColors.muted, fontSize: 11),
               ),
             ],

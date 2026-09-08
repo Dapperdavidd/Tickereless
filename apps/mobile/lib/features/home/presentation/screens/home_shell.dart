@@ -4,8 +4,8 @@ import 'package:tickerless/core/theme/app_theme.dart';
 
 /// The three tabs, each keeping its own navigation stack.
 ///
-/// Icon-only and unlabelled: three destinations this distinct do not need
-/// captions, and dropping them keeps the bar out of the content's way.
+/// Labels keep the three top-level destinations obvious at a glance while the
+/// compact selected pill gives users a reliable sense of place.
 class HomeShell extends StatelessWidget {
   const HomeShell({required this.shell, super.key});
 
@@ -74,7 +74,7 @@ class HomeShell extends StatelessWidget {
         child: SafeArea(
           top: false,
           child: SizedBox(
-            height: 56,
+            height: 64,
             child: Row(
               children: [
                 for (final (index, destination) in _destinations.indexed)
@@ -121,16 +121,42 @@ class _NavButton extends StatelessWidget {
     button: true,
     selected: selected,
     label: label,
+    excludeSemantics: true,
     child: Tooltip(
       message: label,
-      child: GestureDetector(
+      child: InkWell(
         onTap: onTap,
-        behavior: HitTestBehavior.opaque,
-        child: Center(
-          child: Icon(
-            icon,
-            size: 23,
-            color: selected ? foreground : AppColors.muted,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 7),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            curve: Curves.easeOutCubic,
+            decoration: BoxDecoration(
+              color: selected
+                  ? AppColors.blue.withValues(alpha: .14)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 22,
+                  color: selected ? foreground : AppColors.muted,
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  label,
+                  maxLines: 1,
+                  style: TextStyle(
+                    color: selected ? foreground : AppColors.muted,
+                    fontSize: 10.5,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),

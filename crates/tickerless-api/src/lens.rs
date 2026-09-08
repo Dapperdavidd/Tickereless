@@ -40,6 +40,9 @@ const PRODUCT_HINTS: &[(&[&str], &str)] = &[
     (&["search engine", "web search"], "Google"),
     (&["video sharing", "video platform"], "YouTube"),
     (&["android phone", "pixel phone"], "Google Pixel"),
+    (&["surface computer", "surface tablet"], "Microsoft Surface"),
+    (&["windows computer", "windows laptop"], "Microsoft Windows"),
+    (&["game console", "gaming console"], "Microsoft Xbox"),
 ];
 
 #[derive(Debug)]
@@ -141,6 +144,7 @@ mod tests {
             ("Ray-Ban Meta smart glasses", "meta"),
             ("Shot on Google Pixel", "alphabet"),
             ("NVIDIA Jetson", "nvidia"),
+            ("Microsoft Surface Laptop", "microsoft"),
         ] {
             let result = resolve(
                 &catalog,
@@ -162,6 +166,7 @@ mod tests {
             ("virtual-reality headset", "meta"),
             ("graphics processing unit", "nvidia"),
             ("Android phone", "alphabet"),
+            ("Windows computer", "microsoft"),
         ] {
             let result = resolve(
                 &catalog,

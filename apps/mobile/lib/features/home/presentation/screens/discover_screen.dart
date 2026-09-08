@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -12,6 +10,7 @@ import 'package:tickerless/features/discovery/domain/entities/discovery_source.d
 import 'package:tickerless/features/home/presentation/widgets/discover_header.dart';
 import 'package:tickerless/features/home/presentation/widgets/discovery_tile.dart';
 import 'package:tickerless/features/home/presentation/widgets/lens_fab.dart';
+import 'package:tickerless/features/home/presentation/widgets/masonry_grid.dart';
 import 'package:tickerless/features/home/presentation/widgets/section_bar.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.dart';
@@ -30,32 +29,6 @@ class DiscoverScreen extends StatefulWidget {
 }
 
 class _DiscoverScreenState extends State<DiscoverScreen> {
-  late final PageController _worldController = PageController(
-    viewportFraction: .58,
-  );
-  Timer? _worldTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _worldTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (!_worldController.hasClients) return;
-      final current = _worldController.page?.round() ?? 0;
-      _worldController.animateToPage(
-        (current + 1) % (DemoCompanies.trending.length - 1),
-        duration: const Duration(milliseconds: 650),
-        curve: Curves.easeInOutCubic,
-      );
-    });
-  }
-
-  @override
-  void dispose() {
-    _worldTimer?.cancel();
-    _worldController.dispose();
-    super.dispose();
-  }
-
   @override
   Widget build(BuildContext context) => Stack(
     children: [
@@ -89,7 +62,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ),
             const SizedBox(height: 14),
             SizedBox(
-              height: 228,
+              height: 176,
               child: DiscoveryTile(
                 company: DemoCompanies.nvidia,
                 onTap: () => _openPassport(context, DemoCompanies.nvidia),
@@ -117,41 +90,20 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
               ),
             ),
             const SizedBox(height: 13),
-            SizedBox(
-              height: 270,
-              child: PageView.builder(
-                controller: _worldController,
-                scrollDirection: Axis.vertical,
-                itemCount: DemoCompanies.trending.length - 1,
-                itemBuilder: (context, index) {
-                  final company = DemoCompanies.trending[index + 1];
-                  return AnimatedBuilder(
-                    animation: _worldController,
-                    builder: (context, child) {
-                      final page = _worldController.hasClients
-                          ? (_worldController.page ?? 0)
-                          : 0.0;
-                      final distance = (page - index).abs().clamp(0.0, 1.0);
-                      return Transform.scale(
-                        scale: 1 - distance * .08,
-                        child: Opacity(
-                          opacity: 1 - distance * .38,
-                          child: child,
-                        ),
-                      );
-                    },
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 7,
-                      ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: MasonryGrid(
+                items: [
+                  for (final (index, company)
+                      in DemoCompanies.trending.skip(1).indexed)
+                    MasonryItem(
+                      aspectRatio: index.isEven ? 1.02 : .9,
                       child: DiscoveryTile(
                         company: company,
                         onTap: () => _openPassport(context, company),
                       ),
                     ),
-                  );
-                },
+                ],
               ),
             ),
             const SizedBox(height: 22),

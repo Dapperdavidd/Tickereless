@@ -9,7 +9,6 @@ import 'package:tickerless/features/discovery/domain/entities/discovery_source.d
 import 'package:tickerless/features/discovery/presentation/bloc/lens_bloc.dart';
 import 'package:tickerless/features/discovery/presentation/bloc/lens_event.dart';
 import 'package:tickerless/features/discovery/presentation/bloc/lens_state.dart';
-import 'package:tickerless/features/discovery/presentation/widgets/discovery_mode_switch.dart';
 import 'package:tickerless/features/discovery/presentation/widgets/lens_focus_frame.dart';
 
 /// Point the camera at a thing; find out who makes it.
@@ -56,8 +55,12 @@ class _LensScreenState extends State<LensScreen> {
         return;
       }
 
+      final camera = devices.firstWhere(
+        (device) => device.lensDirection == CameraLensDirection.back,
+        orElse: () => devices.first,
+      );
       final controller = CameraController(
-        devices.first,
+        camera,
         ResolutionPreset.high,
         enableAudio: false,
       );
@@ -223,15 +226,6 @@ class _LensReadout extends StatelessWidget {
             ),
             child: Text('Explore ${match.company.name}'),
           ),
-        const SizedBox(height: 16),
-        DiscoveryModeSwitch(
-          selected: 'Lens',
-          onSelected: (mode) => switch (mode) {
-            'Link' => context.pushReplacement(AppRoutes.link),
-            'Search' => context.pushReplacement(AppRoutes.search),
-            _ => null,
-          },
-        ),
       ],
     );
   }

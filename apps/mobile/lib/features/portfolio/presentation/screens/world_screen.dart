@@ -186,7 +186,7 @@ class _LeadStory extends StatelessWidget {
     return InkWell(
       onTap: () => launchUrl(
         Uri.parse(story.article.url),
-        mode: LaunchMode.externalApplication,
+        mode: LaunchMode.inAppBrowserView,
       ),
       borderRadius: BorderRadius.circular(24),
       child: Container(
@@ -246,7 +246,7 @@ class _StoryRow extends StatelessWidget {
     return InkWell(
       onTap: () => launchUrl(
         Uri.parse(story.article.url),
-        mode: LaunchMode.externalApplication,
+        mode: LaunchMode.inAppBrowserView,
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 17),

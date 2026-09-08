@@ -217,7 +217,7 @@ void main() {
     await tester.tap(find.text('View in Wallet'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Wallet'), findsOneWidget);
+    expect(find.text('Wallet'), findsWidgets);
     expect(find.text(r'$15.00'), findsWidgets);
     await tester.scrollUntilVisible(
       find.text('Recent Transactions'),
@@ -238,7 +238,7 @@ void main() {
     await tester.tap(find.bySemanticsLabel('World'));
     await tester.pumpAndSettle();
 
-    expect(find.text('World'), findsOneWidget);
+    expect(find.text('World'), findsWidgets);
     expect(find.text('Latest'), findsOneWidget);
     expect(find.textContaining('official newsroom update'), findsWidgets);
   });

@@ -40,16 +40,18 @@ import Vision
             .compactMap { $0.topCandidates(1).first?.string }
             .joined(separator: "\n") ?? ""
           if call.method == "recognizeText" {
-            result(text)
+            DispatchQueue.main.async { result(text) }
             return
           }
           let labels = classificationRequest.results?
-            .filter { $0.confidence >= 0.15 }
-            .prefix(8)
+            .filter { $0.confidence >= 0.08 }
+            .prefix(16)
             .map(\.identifier) ?? []
-          result(["text": text, "labels": labels])
+          DispatchQueue.main.async { result(["text": text, "labels": labels]) }
         } catch {
-          result(FlutterError(code: "vision_error", message: error.localizedDescription, details: nil))
+          DispatchQueue.main.async {
+            result(FlutterError(code: "vision_error", message: error.localizedDescription, details: nil))
+          }
         }
       }
     }

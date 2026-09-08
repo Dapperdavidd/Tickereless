@@ -6,6 +6,7 @@ import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/features/market/domain/entities/chart_range.dart';
 import 'package:tickerless/features/market/domain/entities/price_series.dart';
 import 'package:tickerless/features/market/presentation/widgets/price_chart.dart';
+import 'package:tickerless/features/wallet/presentation/widgets/token_logo.dart';
 
 class CurrencyAssetScreen extends StatelessWidget {
   const CurrencyAssetScreen({required this.args, super.key});
@@ -28,16 +29,7 @@ class CurrencyAssetScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
         children: [
-          CircleAvatar(
-            radius: 28,
-            backgroundColor: color,
-            child: isUsdc
-                ? const Text(
-                    r'$ ',
-                    style: TextStyle(fontWeight: FontWeight.w800),
-                  )
-                : const Icon(Icons.diamond_outlined, color: Colors.white),
-          ),
+          TokenLogo(symbol: args.symbol, size: 56),
           const SizedBox(height: 18),
           Text(
             isUsdc
