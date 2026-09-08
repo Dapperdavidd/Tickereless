@@ -33,6 +33,11 @@ class SaleResult {
   final double usdc;
 }
 
+class TransferResult {
+  const TransferResult({required this.hash});
+  final String hash;
+}
+
 /// The only mobile boundary that reads balances or signs Base Sepolia calls.
 abstract interface class ChainGateway {
   Future<OnChainSnapshot> snapshot(String walletAddress);
@@ -45,6 +50,16 @@ abstract interface class ChainGateway {
     required String userId,
     required Company company,
     required double tokens,
+  });
+  Future<TransferResult> sendUsdc({
+    required String userId,
+    required String recipient,
+    required double amount,
+  });
+  Future<TransferResult> sendEth({
+    required String userId,
+    required String recipient,
+    required double amount,
   });
 }
 
@@ -59,7 +74,7 @@ class BaseSepoliaGateway implements ChainGateway {
   final Web3Client _client;
 
   static final _erc20Abi = ContractAbi.fromJson(
-    '[{"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"account","type":"address"}],"outputs":[{"name":"balance","type":"uint256"}]},{"type":"function","name":"approve","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"approved","type":"bool"}]}]',
+    '[{"type":"function","name":"balanceOf","stateMutability":"view","inputs":[{"name":"account","type":"address"}],"outputs":[{"name":"balance","type":"uint256"}]},{"type":"function","name":"approve","stateMutability":"nonpayable","inputs":[{"name":"spender","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"approved","type":"bool"}]},{"type":"function","name":"transfer","stateMutability":"nonpayable","inputs":[{"name":"recipient","type":"address"},{"name":"amount","type":"uint256"}],"outputs":[{"name":"sent","type":"bool"}]}]',
     'ERC20',
   );
   static final _marketAbi = ContractAbi.fromJson(
@@ -98,6 +113,69 @@ class BaseSepoliaGateway implements ChainGateway {
       );
     } catch (error) {
       throw WalletFailure('Could not read Base Sepolia balances: $error');
+    }
+  }
+
+  @override
+  Future<TransferResult> sendUsdc({
+    required String userId,
+    required String recipient,
+    required double amount,
+  }) async {
+    if (amount <= 0) throw const WalletFailure('Enter an amount to send.');
+    try {
+      final credentials = EthPrivateKey.fromHex(
+        await _wallets.readPrivateKey(userId),
+      );
+      final contract = DeployedContract(
+        _erc20Abi,
+        EthereumAddress.fromHex(ChainConfig.usdc),
+      );
+      final hash = await _client.sendTransaction(
+        credentials,
+        Transaction.callContract(
+          contract: contract,
+          function: contract.function('transfer'),
+          parameters: [
+            EthereumAddress.fromHex(recipient),
+            BigInt.from((amount * 1000000).round()),
+          ],
+        ),
+        chainId: ChainConfig.chainId,
+      );
+      await _confirmed(hash);
+      return TransferResult(hash: hash);
+    } catch (error) {
+      if (error is WalletFailure) rethrow;
+      throw WalletFailure('USDC transfer failed: $error');
+    }
+  }
+
+  @override
+  Future<TransferResult> sendEth({
+    required String userId,
+    required String recipient,
+    required double amount,
+  }) async {
+    if (amount <= 0) throw const WalletFailure('Enter an amount to send.');
+    try {
+      final credentials = EthPrivateKey.fromHex(
+        await _wallets.readPrivateKey(userId),
+      );
+      final wei = BigInt.from((amount * 1e18).round());
+      final hash = await _client.sendTransaction(
+        credentials,
+        Transaction(
+          to: EthereumAddress.fromHex(recipient),
+          value: EtherAmount.fromBigInt(EtherUnit.wei, wei),
+        ),
+        chainId: ChainConfig.chainId,
+      );
+      await _confirmed(hash);
+      return TransferResult(hash: hash);
+    } catch (error) {
+      if (error is WalletFailure) rethrow;
+      throw WalletFailure('ETH transfer failed: $error');
     }
   }
 

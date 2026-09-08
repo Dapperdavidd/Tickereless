@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
@@ -17,6 +18,7 @@ import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_event.
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
+import 'package:wallet/wallet.dart';
 
 /// Wallet identity, owned assets, and the transactions that produced them.
 /// The historical route stays `/activity` so existing deep links keep working.
@@ -129,16 +131,46 @@ class _WalletBody extends StatelessWidget {
             const SizedBox(height: 28),
             Row(
               children: [
-                for (final action in const [
-                  (Icons.add_rounded, 'Deposit'),
-                  (Icons.arrow_upward_rounded, 'Send'),
-                  (Icons.arrow_downward_rounded, 'Receive'),
-                  (Icons.swap_horiz_rounded, 'Swap'),
+                for (final action in [
+                  (
+                    Icons.add_rounded,
+                    'Deposit',
+                    address == null
+                        ? null
+                        : () => _showReceive(context, address!),
+                  ),
+                  (
+                    Icons.arrow_upward_rounded,
+                    'Send',
+                    chain == null ? null : () => _showSend(context, chain!),
+                  ),
+                  (
+                    Icons.arrow_downward_rounded,
+                    'Receive',
+                    address == null
+                        ? null
+                        : () => _showReceive(context, address!),
+                  ),
+                  (
+                    Icons.swap_horiz_rounded,
+                    'Swap',
+                    () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text(
+                          'Swap is unavailable on the Base Sepolia test market.',
+                        ),
+                      ),
+                    ),
+                  ),
                 ])
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.only(right: 8),
-                      child: _WalletAction(icon: action.$1, label: action.$2),
+                      child: _WalletAction(
+                        icon: action.$1,
+                        label: action.$2,
+                        onTap: action.$3,
+                      ),
                     ),
                   ),
               ],
@@ -189,6 +221,71 @@ class _WalletBody extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showReceive(BuildContext context, String walletAddress) {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(28, 8, 28, 30),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Receive on Base Sepolia',
+                style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Only send Base Sepolia ETH or USDC to this address.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.muted),
+              ),
+              const SizedBox(height: 24),
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(14),
+                  child: QrImageView(data: walletAddress, size: 190),
+                ),
+              ),
+              const SizedBox(height: 18),
+              SelectableText(
+                walletAddress,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12, color: AppColors.muted),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: () async {
+                  await Clipboard.setData(ClipboardData(text: walletAddress));
+                  if (context.mounted) Navigator.pop(context);
+                },
+                icon: const Icon(Icons.copy_rounded),
+                label: const Text('Copy address'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showSend(BuildContext context, OnChainSnapshot balance) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => BlocProvider.value(
+        value: context.read<AuthBloc>(),
+        child: _SendSheet(balance: balance, gateway: context.read()),
       ),
     );
   }
@@ -301,15 +398,18 @@ class _EthRow extends StatelessWidget {
 }
 
 class _WalletAction extends StatelessWidget {
-  const _WalletAction({required this.icon, required this.label});
+  const _WalletAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
+  final VoidCallback? onTap;
   @override
   Widget build(BuildContext context) => InkWell(
     borderRadius: BorderRadius.circular(16),
-    onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('$label is coming in the on-chain wallet step.')),
-    ),
+    onTap: onTap,
     child: Container(
       height: 76,
       decoration: BoxDecoration(
@@ -327,6 +427,154 @@ class _WalletAction extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _SendSheet extends StatefulWidget {
+  const _SendSheet({required this.balance, required this.gateway});
+  final OnChainSnapshot balance;
+  final ChainGateway gateway;
+
+  @override
+  State<_SendSheet> createState() => _SendSheetState();
+}
+
+class _SendSheetState extends State<_SendSheet> {
+  final _recipient = TextEditingController();
+  final _amount = TextEditingController();
+  String _asset = 'USDC';
+  bool _sending = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _recipient.dispose();
+    _amount.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final session = context.read<AuthBloc>().state.session;
+    final amount = double.tryParse(_amount.text.trim());
+    final recipient = _recipient.text.trim();
+    if (session == null || amount == null || amount <= 0) {
+      setState(() => _error = 'Enter a valid recipient and amount.');
+      return;
+    }
+    try {
+      EthereumAddress.fromHex(recipient);
+    } catch (_) {
+      setState(() => _error = 'Enter a valid 0x wallet address.');
+      return;
+    }
+    final available = _asset == 'USDC'
+        ? widget.balance.usdc
+        : widget.balance.eth;
+    if (amount > available) {
+      setState(() => _error = 'Your available $_asset balance is too low.');
+      return;
+    }
+    if (_asset == 'ETH' && amount >= available) {
+      setState(() => _error = 'Leave some ETH behind for the network fee.');
+      return;
+    }
+    setState(() {
+      _sending = true;
+      _error = null;
+    });
+    try {
+      if (_asset == 'USDC') {
+        await widget.gateway.sendUsdc(
+          userId: session.userId,
+          recipient: recipient,
+          amount: amount,
+        );
+      } else {
+        await widget.gateway.sendEth(
+          userId: session.userId,
+          recipient: recipient,
+          amount: amount,
+        );
+      }
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      Navigator.pop(context);
+      messenger.showSnackBar(
+        SnackBar(content: Text('$amount $_asset sent on Base Sepolia.')),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _sending = false;
+        _error = error.toString().replaceFirst('Failure: ', '');
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottom = MediaQuery.viewInsetsOf(context).bottom;
+    final available = _asset == 'USDC'
+        ? '\$${widget.balance.usdc.toStringAsFixed(2)}'
+        : '${widget.balance.eth.toStringAsFixed(6)} ETH';
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(24, 8, 24, 24 + bottom),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Send',
+              style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 18),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(value: 'USDC', label: Text('USDC')),
+                ButtonSegment(value: 'ETH', label: Text('Base Sepolia ETH')),
+              ],
+              selected: {_asset},
+              onSelectionChanged: (value) =>
+                  setState(() => _asset = value.single),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Available: $available',
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+            const SizedBox(height: 18),
+            TextField(
+              controller: _recipient,
+              autocorrect: false,
+              decoration: const InputDecoration(labelText: 'Recipient address'),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _amount,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              decoration: InputDecoration(labelText: 'Amount in $_asset'),
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              Text(_error!, style: const TextStyle(color: AppColors.red)),
+            ],
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: _sending ? null : _send,
+              child: Text(_sending ? 'Confirming on Base…' : 'Review and send'),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Testnet assets have no monetary value. Network fees use Base Sepolia ETH.',
+              style: TextStyle(color: AppColors.muted, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _SectionHeading extends StatelessWidget {
