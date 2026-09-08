@@ -22,6 +22,12 @@ class PurchaseResult {
   final double tokens;
 }
 
+class SaleResult {
+  const SaleResult({required this.hash, required this.usdc});
+  final String hash;
+  final double usdc;
+}
+
 /// The only mobile boundary that reads balances or signs Base Sepolia calls.
 abstract interface class ChainGateway {
   Future<OnChainSnapshot> snapshot(String walletAddress);
@@ -29,6 +35,11 @@ abstract interface class ChainGateway {
     required String userId,
     required Company company,
     required double usdc,
+  });
+  Future<SaleResult> sell({
+    required String userId,
+    required Company company,
+    required double tokens,
   });
 }
 
@@ -47,7 +58,7 @@ class BaseSepoliaGateway implements ChainGateway {
     'ERC20',
   );
   static final _marketAbi = ContractAbi.fromJson(
-    '[{"type":"function","name":"buy","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"amountUsdc","type":"uint256"},{"name":"minimumTokenAmount","type":"uint256"}],"outputs":[{"name":"tokenAmount","type":"uint256"}]}]',
+    '[{"type":"function","name":"buy","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"amountUsdc","type":"uint256"},{"name":"minimumTokenAmount","type":"uint256"}],"outputs":[{"name":"tokenAmount","type":"uint256"}]},{"type":"function","name":"sell","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"tokenAmount","type":"uint256"},{"name":"minimumUsdcAmount","type":"uint256"}],"outputs":[{"name":"amountUsdc","type":"uint256"}]}]',
     'TickerlessMarket',
   );
 
@@ -80,6 +91,72 @@ class BaseSepoliaGateway implements ChainGateway {
       );
     } catch (error) {
       throw WalletFailure('Could not read Base Sepolia balances: $error');
+    }
+  }
+
+  @override
+  Future<SaleResult> sell({
+    required String userId,
+    required Company company,
+    required double tokens,
+  }) async {
+    final assetHex = ChainConfig.assets[company.ticker];
+    final price = ChainConfig.prices[company.ticker];
+    if (assetHex == null || price == null) {
+      throw const WalletFailure(
+        'This asset cannot be sold in the test market.',
+      );
+    }
+    if (tokens <= 0) throw const WalletFailure('Enter an amount to sell.');
+    try {
+      final credentials = EthPrivateKey.fromHex(
+        await _wallets.readPrivateKey(userId),
+      );
+      final tokenAmount = BigInt.from(
+        (tokens * BigInt.from(10).pow(18).toDouble()).round(),
+      );
+      final usdcAmount =
+          (tokenAmount * BigInt.from((price * 1000000).round())) ~/
+          BigInt.from(10).pow(18);
+      final asset = DeployedContract(
+        _erc20Abi,
+        EthereumAddress.fromHex(assetHex),
+      );
+      final market = DeployedContract(
+        _marketAbi,
+        EthereumAddress.fromHex(ChainConfig.market),
+      );
+      final approval = await _client.sendTransaction(
+        credentials,
+        Transaction.callContract(
+          contract: asset,
+          function: asset.function('approve'),
+          parameters: [
+            EthereumAddress.fromHex(ChainConfig.market),
+            tokenAmount,
+          ],
+        ),
+        chainId: ChainConfig.chainId,
+      );
+      await _confirmed(approval);
+      final hash = await _client.sendTransaction(
+        credentials,
+        Transaction.callContract(
+          contract: market,
+          function: market.function('sell'),
+          parameters: [
+            EthereumAddress.fromHex(assetHex),
+            tokenAmount,
+            usdcAmount,
+          ],
+        ),
+        chainId: ChainConfig.chainId,
+      );
+      await _confirmed(hash);
+      return SaleResult(hash: hash, usdc: usdcAmount / BigInt.from(10).pow(6));
+    } catch (error) {
+      if (error is WalletFailure) rethrow;
+      throw WalletFailure('Base Sepolia sale failed: $error');
     }
   }
 

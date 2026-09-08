@@ -37,6 +37,13 @@ class FakeChainGateway implements ChainGateway {
     required double usdc,
   }) async =>
       PurchaseResult(hash: '0x${'1' * 64}', tokens: usdc / company.price);
+
+  @override
+  Future<SaleResult> sell({
+    required String userId,
+    required Company company,
+    required double tokens,
+  }) async => SaleResult(hash: '0x${'2' * 64}', usdc: tokens * company.price);
 }
 
 class FakeAuthRepository implements AuthRepository {
