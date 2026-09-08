@@ -86,4 +86,58 @@ abstract final class AppTheme {
     dividerColor: AppColors.border,
     splashFactory: InkSparkle.splashFactory,
   );
+
+  static ThemeData get light => ThemeData(
+    brightness: Brightness.light,
+    colorScheme: const ColorScheme.light(
+      primary: Color(0xFF071D31),
+      secondary: Color(0xFF006FAF),
+      surface: Colors.white,
+      error: Color(0xFFD72E3A),
+    ),
+    scaffoldBackgroundColor: const Color(0xFFF4F8FC),
+    fontFamily: 'Helvetica Neue',
+    appBarTheme: const AppBarTheme(
+      elevation: 0,
+      backgroundColor: Colors.transparent,
+      foregroundColor: Color(0xFF07131C),
+    ),
+    inputDecorationTheme: InputDecorationTheme(
+      filled: true,
+      fillColor: Colors.white,
+      hintStyle: const TextStyle(color: Color(0xFF607582)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(28),
+        borderSide: const BorderSide(color: Color(0xFFB7CBD7)),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(28),
+        borderSide: const BorderSide(color: Color(0xFFB7CBD7)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(28),
+        borderSide: const BorderSide(color: Color(0xFF168ED0)),
+      ),
+    ),
+    filledButtonTheme: FilledButtonThemeData(
+      style: FilledButton.styleFrom(
+        foregroundColor: Colors.white,
+        backgroundColor: const Color(0xFF071D31),
+        minimumSize: const Size.fromHeight(54),
+        shape: const StadiumBorder(),
+        textStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+      ),
+    ),
+    outlinedButtonTheme: OutlinedButtonThemeData(
+      style: OutlinedButton.styleFrom(
+        foregroundColor: const Color(0xFF071D31),
+        minimumSize: const Size.fromHeight(52),
+        side: const BorderSide(color: Color(0xFF9EB5C2)),
+        shape: const StadiumBorder(),
+      ),
+    ),
+    dividerColor: const Color(0xFFB7CBD7),
+    splashFactory: InkSparkle.splashFactory,
+  );
 }

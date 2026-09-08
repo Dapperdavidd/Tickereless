@@ -89,7 +89,7 @@ class _HeaderAction extends StatelessWidget {
     tooltip: tooltip,
     visualDensity: VisualDensity.compact,
     iconSize: 21,
-    color: Colors.white,
+    color: Theme.of(context).colorScheme.onSurface,
     icon: Icon(icon),
   );
 }

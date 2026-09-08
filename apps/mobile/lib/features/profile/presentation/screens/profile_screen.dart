@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
+import 'package:tickerless/core/theme/appearance_controller.dart';
 import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_event.dart';
@@ -177,13 +178,21 @@ class _AccountProfileState extends State<_AccountProfile> {
                       userId: userId,
                     ),
             ),
-            const SettingTile(
+            SettingTile(
               icon: Icons.notifications_none,
               label: 'Notifications',
+              detail: AppearanceController().newsNotifications
+                  ? 'Company news · On'
+                  : 'Off',
+              onTap: () => _notifications(context),
             ),
-            const SettingTile(
+            SettingTile(
               icon: Icons.dark_mode_outlined,
-              label: 'Appearance · Dark',
+              label: 'Appearance',
+              detail: AppearanceController().themeMode == ThemeMode.light
+                  ? 'Light'
+                  : 'Dark',
+              onTap: () => _appearance(context),
             ),
             SettingTile(
               icon: Icons.help_outline,
@@ -386,4 +395,67 @@ class _AccountProfileState extends State<_AccountProfile> {
           ],
         ),
       );
+
+  Future<void> _appearance(BuildContext context) async {
+    final controller = AppearanceController();
+    final selected = await showModalBottomSheet<ThemeMode>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Appearance',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              RadioGroup<ThemeMode>(
+                groupValue: controller.themeMode,
+                onChanged: (value) => Navigator.pop(context, value),
+                child: const Column(
+                  children: [
+                    RadioListTile(
+                      value: ThemeMode.dark,
+                      title: Text('Dark'),
+                      subtitle: Text('Deep space and blue light'),
+                    ),
+                    RadioListTile(
+                      value: ThemeMode.light,
+                      title: Text('Light'),
+                      subtitle: Text('White canvas with a blue atmosphere'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (selected != null) await controller.setThemeMode(selected);
+  }
+
+  Future<void> _notifications(BuildContext context) async {
+    final controller = AppearanceController();
+    final enabled = await showModalBottomSheet<bool>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: SwitchListTile.adaptive(
+          contentPadding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+          value: controller.newsNotifications,
+          title: const Text('Company news alerts'),
+          subtitle: const Text(
+            'Save your preference now. Device push delivery will be enabled when the production notification service is connected.',
+          ),
+          onChanged: (value) => Navigator.pop(context, value),
+        ),
+      ),
+    );
+    if (enabled != null) await controller.setNewsNotifications(enabled);
+  }
 }

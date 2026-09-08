@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/di/dependencies.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
+import 'package:tickerless/core/theme/appearance_controller.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_state.dart';
 import 'package:tickerless/features/discovery/presentation/bloc/lens_bloc.dart';
@@ -26,6 +27,7 @@ class TickerlessApp extends StatefulWidget {
 }
 
 class _TickerlessAppState extends State<TickerlessApp> {
+  final _appearance = AppearanceController();
   late final AuthBloc _authBloc = AuthBloc(
     signInWithEmail: widget.dependencies.signInWithEmail,
     registerWithEmail: widget.dependencies.registerWithEmail,
@@ -104,11 +106,16 @@ class _TickerlessAppState extends State<TickerlessApp> {
               // Wallet renders its own retryable chain state.
             }
           },
-          child: MaterialApp.router(
-            title: 'Tickerless',
-            debugShowCheckedModeBanner: false,
-            theme: AppTheme.dark,
-            routerConfig: _router,
+          child: AnimatedBuilder(
+            animation: _appearance,
+            builder: (context, _) => MaterialApp.router(
+              title: 'Tickerless',
+              debugShowCheckedModeBanner: false,
+              theme: AppTheme.light,
+              darkTheme: AppTheme.dark,
+              themeMode: _appearance.themeMode,
+              routerConfig: _router,
+            ),
           ),
         ),
       ),
