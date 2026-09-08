@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
@@ -23,12 +25,8 @@ class PurchaseConfirmedScreen extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const CircleAvatar(
-              radius: 38,
-              backgroundColor: Colors.white,
-              child: Icon(Icons.check, color: Colors.black, size: 42),
-            ),
-            const SizedBox(height: 28),
+            const _OwnershipBurst(),
+            const SizedBox(height: 12),
             Text(
               'You now own\n${args.company.name}.',
               textAlign: TextAlign.center,
@@ -83,4 +81,95 @@ class PurchaseConfirmedScreen extends StatelessWidget {
       ),
     ),
   );
+}
+
+class _OwnershipBurst extends StatefulWidget {
+  const _OwnershipBurst();
+
+  @override
+  State<_OwnershipBurst> createState() => _OwnershipBurstState();
+}
+
+class _OwnershipBurstState extends State<_OwnershipBurst>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1150),
+  )..forward();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    height: 128,
+    width: 260,
+    child: AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) => Stack(
+        alignment: Alignment.center,
+        children: [
+          CustomPaint(
+            size: const Size(260, 128),
+            painter: _ConfettiPainter(progress: _controller.value),
+          ),
+          Transform.scale(
+            scale: Curves.elasticOut.transform(_controller.value),
+            child: const CircleAvatar(
+              radius: 38,
+              backgroundColor: Colors.white,
+              child: Icon(Icons.check, color: Colors.black, size: 42),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+class _ConfettiPainter extends CustomPainter {
+  const _ConfettiPainter({required this.progress});
+  final double progress;
+
+  static const _colors = [
+    Color(0xFF69C8FF),
+    Color(0xFF36F46B),
+    Color(0xFFFFB24A),
+    Color(0xFFFF6F91),
+    Color(0xFF9B7BFF),
+  ];
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = size.center(Offset.zero);
+    for (var index = 0; index < 28; index++) {
+      final angle = index / 28 * math.pi * 2;
+      final distance =
+          Curves.easeOutCubic.transform(progress) * (48 + (index % 5) * 8);
+      final fall = progress * progress * 24;
+      final point =
+          center +
+          Offset(math.cos(angle) * distance, math.sin(angle) * distance + fall);
+      final opacity = (1 - ((progress - .68) / .32)).clamp(0.0, 1.0);
+      canvas.save();
+      canvas.translate(point.dx, point.dy);
+      canvas.rotate(angle + progress * 4);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          const Rect.fromLTWH(-3, -6, 6, 12),
+          const Radius.circular(2),
+        ),
+        Paint()
+          ..color = _colors[index % _colors.length].withValues(alpha: opacity),
+      );
+      canvas.restore();
+    }
+  }
+
+  @override
+  bool shouldRepaint(_ConfettiPainter oldDelegate) =>
+      progress != oldDelegate.progress;
 }

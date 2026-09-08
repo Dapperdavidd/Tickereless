@@ -409,34 +409,23 @@ class _OwnBarState extends State<_OwnBar> {
     final position = widget.position;
     final session = context.read<AuthBloc>().state.session;
     if (position == null || session == null || _selling) return;
-    final confirmed = await showDialog<bool>(
+    final amount = await showModalBottomSheet<double>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Sell ${widget.company.symbol}?'),
-        content: Text(
-          'Redeem ${position.tokens.toStringAsFixed(4)} test tokens for '
-          '\$${position.invested.toStringAsFixed(2)} test USDC. Two Base '
-          'Sepolia confirmations are required.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Sell all'),
-          ),
-        ],
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _SellAmountSheet(
+        symbol: widget.company.symbol,
+        maximumUsdc: position.invested,
       ),
     );
-    if (confirmed != true || !mounted) return;
+    if (amount == null || !mounted) return;
+    final tokens = position.tokens * (amount / position.invested);
     setState(() => _selling = true);
     try {
       final result = await context.read<ChainGateway>().sell(
         userId: session.userId,
         company: widget.company,
-        tokens: position.tokens,
+        tokens: tokens,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -512,4 +501,118 @@ class _OwnBarState extends State<_OwnBar> {
       ),
     );
   }
+}
+
+class _SellAmountSheet extends StatefulWidget {
+  const _SellAmountSheet({required this.symbol, required this.maximumUsdc});
+  final String symbol;
+  final double maximumUsdc;
+
+  @override
+  State<_SellAmountSheet> createState() => _SellAmountSheetState();
+}
+
+class _SellAmountSheetState extends State<_SellAmountSheet> {
+  late double _amount = widget.maximumUsdc;
+
+  Future<void> _typeAmount() async {
+    final controller = TextEditingController(text: _amount.toStringAsFixed(2));
+    final value = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Amount to sell'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            prefixText: r'$ ',
+            suffixText: 'USDC',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () =>
+                Navigator.pop(context, double.tryParse(controller.text.trim())),
+            child: const Text('Use amount'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value != null && value > 0 && mounted) {
+      setState(() => _amount = value.clamp(.01, widget.maximumUsdc));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => SafeArea(
+    child: Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        4,
+        24,
+        24 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Sell ${widget.symbol}',
+            style: const TextStyle(fontSize: 25, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 18),
+          InkWell(
+            onTap: _typeAmount,
+            child: Row(
+              children: [
+                Text(
+                  '\$${_amount.toStringAsFixed(2)}',
+                  style: const TextStyle(
+                    fontSize: 38,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                const Icon(Icons.edit_rounded, size: 18, color: AppColors.blue),
+              ],
+            ),
+          ),
+          Slider(
+            value: _amount,
+            min: .01,
+            max: widget.maximumUsdc,
+            divisions: widget.maximumUsdc > 1 ? 100 : 20,
+            label: '\$${_amount.toStringAsFixed(2)}',
+            onChanged: (value) => setState(() => _amount = value),
+          ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text('Partial', style: TextStyle(color: AppColors.muted)),
+              TextButton(
+                onPressed: () => setState(() => _amount = widget.maximumUsdc),
+                child: const Text('Max'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, _amount),
+            child: Text('Review sale · \$${_amount.toStringAsFixed(2)}'),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Two Base Sepolia confirmations are required. Testnet assets have no monetary value.',
+            style: TextStyle(color: AppColors.muted, fontSize: 11),
+          ),
+        ],
+      ),
+    ),
+  );
 }

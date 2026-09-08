@@ -179,114 +179,125 @@ class _LeadStory extends StatelessWidget {
   const _LeadStory({required this.story});
   final _CompanyStory story;
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: () => launchUrl(
-      Uri.parse(story.article.url),
-      mode: LaunchMode.externalApplication,
-    ),
-    borderRadius: BorderRadius.circular(24),
-    child: Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
+  Widget build(BuildContext context) {
+    final surface = Theme.of(context).colorScheme.surface;
+    final foreground = Theme.of(context).colorScheme.onSurface;
+    final border = Theme.of(context).dividerColor;
+    return InkWell(
+      onTap: () => launchUrl(
+        Uri.parse(story.article.url),
+        mode: LaunchMode.externalApplication,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              CompanyLogo(
-                ticker: story.company.ticker,
-                size: 28,
-                color: Colors.white,
-              ),
-              const SizedBox(width: 10),
-              Text(
-                '${story.company.name} · ${story.company.ticker}',
-                style: const TextStyle(color: AppColors.muted, fontSize: 12),
-              ),
-              const Spacer(),
-              const Icon(Icons.north_east_rounded, size: 17),
-            ],
-          ),
-          const SizedBox(height: 34),
-          Text(
-            story.article.headline,
-            style: const TextStyle(
-              fontSize: 25,
-              height: 1.08,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -.7,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CompanyLogo(
+                  ticker: story.company.ticker,
+                  size: 28,
+                  color: foreground,
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  '${story.company.name} · ${story.company.ticker}',
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+                const Spacer(),
+                const Icon(Icons.north_east_rounded, size: 17),
+              ],
             ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            '${story.article.source} · ${_ago(story.article.publishedAt)}',
-            style: const TextStyle(color: AppColors.muted, fontSize: 12),
-          ),
-        ],
+            const SizedBox(height: 34),
+            Text(
+              story.article.headline,
+              style: const TextStyle(
+                fontSize: 25,
+                height: 1.08,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -.7,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              '${story.article.source} · ${_ago(story.article.publishedAt)}',
+              style: const TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _StoryRow extends StatelessWidget {
   const _StoryRow({required this.story});
   final _CompanyStory story;
   @override
-  Widget build(BuildContext context) => InkWell(
-    onTap: () => launchUrl(
-      Uri.parse(story.article.url),
-      mode: LaunchMode.externalApplication,
-    ),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 17),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 34,
-            child: CompanyLogo(
-              ticker: story.company.ticker,
-              size: 24,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  story.article.headline,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    height: 1.3,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 7),
-                Text(
-                  '${story.company.ticker} · ${story.article.source} · ${_ago(story.article.publishedAt)}',
-                  style: const TextStyle(color: AppColors.muted, fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          const Icon(
-            Icons.chevron_right_rounded,
-            size: 18,
-            color: AppColors.muted,
-          ),
-        ],
+  Widget build(BuildContext context) {
+    final foreground = Theme.of(context).colorScheme.onSurface;
+    return InkWell(
+      onTap: () => launchUrl(
+        Uri.parse(story.article.url),
+        mode: LaunchMode.externalApplication,
       ),
-    ),
-  );
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 17),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 34,
+              child: CompanyLogo(
+                ticker: story.company.ticker,
+                size: 24,
+                color: foreground,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    story.article.headline,
+                    maxLines: 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      height: 1.3,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 7),
+                  Text(
+                    '${story.company.ticker} · ${story.article.source} · ${_ago(story.article.publishedAt)}',
+                    style: const TextStyle(
+                      color: AppColors.muted,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: AppColors.muted,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _EmptyNews extends StatelessWidget {
@@ -348,7 +359,9 @@ class _NewsSkeletonState extends State<_NewsSkeleton>
       final pulse = _controller.value < .5
           ? _controller.value
           : 1 - _controller.value;
-      final color = Colors.white.withValues(alpha: .06 + pulse * .18);
+      final foreground = Theme.of(context).colorScheme.onSurface;
+      final surface = Theme.of(context).colorScheme.surface;
+      final color = foreground.withValues(alpha: .06 + pulse * .18);
       Widget bar(double width, double height) => Container(
         width: width,
         height: height,
@@ -364,9 +377,9 @@ class _NewsSkeletonState extends State<_NewsSkeleton>
             height: 210,
             padding: const EdgeInsets.all(22),
             decoration: BoxDecoration(
-              color: AppColors.surfaceRaised,
+              color: surface,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: AppColors.border),
+              border: Border.all(color: Theme.of(context).dividerColor),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

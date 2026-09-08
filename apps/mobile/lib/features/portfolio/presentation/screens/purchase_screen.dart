@@ -23,9 +23,9 @@ class PurchaseScreen extends StatefulWidget {
 }
 
 class _PurchaseScreenState extends State<PurchaseScreen> {
-  static const _amounts = [1, 5, 10, 25];
+  static const _amounts = [1.0, 5.0, 10.0];
 
-  int _amount = 5;
+  double _amount = 5;
   bool _buying = false;
   String? _error;
 
@@ -40,13 +40,13 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       final result = await context.read<ChainGateway>().buy(
         userId: session.userId,
         company: widget.args.company,
-        usdc: _amount.toDouble(),
+        usdc: _amount,
       );
       if (!mounted) return;
       context.read<PortfolioBloc>().add(
         PurchaseRecorded(
           company: widget.args.company,
-          invested: _amount.toDouble(),
+          invested: _amount,
           tokens: result.tokens,
           source: widget.args.source,
         ),
@@ -55,7 +55,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         AppRoutes.receipt,
         extra: ReceiptArgs(
           company: widget.args.company,
-          invested: _amount.toDouble(),
+          invested: _amount,
           tokens: result.tokens,
           source: widget.args.source,
           transactionHash: result.hash,
@@ -65,6 +65,44 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       if (mounted) setState(() => _error = error.toString());
     } finally {
       if (mounted) setState(() => _buying = false);
+    }
+  }
+
+  Future<void> _typeAmount() async {
+    final controller = TextEditingController(
+      text: _amount.toStringAsFixed(_amount == _amount.roundToDouble() ? 0 : 2),
+    );
+    final amount = await showDialog<double>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Enter an amount'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          decoration: const InputDecoration(
+            prefixText: r'$ ',
+            suffixText: 'USDC',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () {
+              final value = double.tryParse(controller.text.trim());
+              Navigator.pop(context, value);
+            },
+            child: const Text('Use amount'),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (amount != null && amount > 0 && mounted) {
+      setState(() => _amount = amount.clamp(1, 100));
     }
   }
 
@@ -78,13 +116,34 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
       child: ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          Text(
-            '\$${company.price.toStringAsFixed(2)}',
-            style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w700),
+          InkWell(
+            onTap: _typeAmount,
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Text(
+                    '\$${_amount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 42,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -1.4,
+                    ),
+                  ),
+                  const SizedBox(width: 9),
+                  const Icon(
+                    Icons.edit_rounded,
+                    size: 18,
+                    color: AppColors.blue,
+                  ),
+                ],
+              ),
+            ),
           ),
-          const Text(
-            'Base Sepolia market price',
-            style: TextStyle(color: AppColors.muted),
+          Text(
+            'USDC to invest · ${company.symbol} price \$${company.price.toStringAsFixed(2)}',
+            style: const TextStyle(color: AppColors.muted),
           ),
           const SizedBox(height: 28),
           Row(
@@ -109,7 +168,7 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                     child: Padding(
                       padding: const EdgeInsets.only(right: 8),
                       child: ChoiceChip(
-                        label: Text(value == 25 ? 'Custom' : '\$$value'),
+                        label: Text('\$${value.toStringAsFixed(0)}'),
                         selected: _amount == value,
                         onSelected: (_) => setState(() => _amount = value),
                       ),
@@ -117,6 +176,44 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
                   ),
                 )
                 .toList(),
+          ),
+          const SizedBox(height: 20),
+          SliderTheme(
+            data: SliderTheme.of(context).copyWith(
+              activeTrackColor: AppColors.blue,
+              inactiveTrackColor: Theme.of(context).dividerColor,
+              thumbColor: Theme.of(context).colorScheme.onSurface,
+              tickMarkShape: const RoundSliderTickMarkShape(
+                tickMarkRadius: 1.2,
+              ),
+              activeTickMarkColor: Colors.white54,
+              inactiveTickMarkColor: AppColors.muted,
+            ),
+            child: Slider(
+              value: _amount.clamp(1, 100),
+              min: 1,
+              max: 100,
+              divisions: 99,
+              label: '\$${_amount.toStringAsFixed(0)}',
+              onChanged: (value) => setState(() => _amount = value),
+            ),
+          ),
+          const Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                '\$1',
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+              Text(
+                'Slide or tap the amount to type',
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+              Text(
+                '\$100',
+                style: TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
           ),
           const SizedBox(height: 24),
           HairlineList(

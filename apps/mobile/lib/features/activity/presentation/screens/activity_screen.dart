@@ -233,8 +233,8 @@ class _WalletBody extends StatelessWidget {
       context: context,
       showDragHandle: true,
       builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(28, 8, 28, 30),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -256,7 +256,7 @@ class _WalletBody extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(14),
-                  child: QrImageView(data: walletAddress, size: 190),
+                  child: QrImageView(data: walletAddress, size: 172),
                 ),
               ),
               const SizedBox(height: 18),
@@ -269,7 +269,12 @@ class _WalletBody extends StatelessWidget {
               FilledButton.icon(
                 onPressed: () async {
                   await Clipboard.setData(ClipboardData(text: walletAddress));
-                  if (context.mounted) Navigator.pop(context);
+                  if (!context.mounted) return;
+                  final messenger = ScaffoldMessenger.of(context);
+                  Navigator.pop(context);
+                  messenger.showSnackBar(
+                    const SnackBar(content: Text('Wallet address copied.')),
+                  );
                 },
                 icon: const Icon(Icons.copy_rounded),
                 label: const Text('Copy address'),
@@ -363,9 +368,9 @@ class _AddressPill extends StatelessWidget {
     child: Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -448,9 +453,9 @@ class _WalletAction extends StatelessWidget {
     child: Container(
       height: 76,
       decoration: BoxDecoration(
-        color: AppColors.surfaceRaised,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.border),
+        border: Border.all(color: Theme.of(context).dividerColor),
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -699,10 +704,10 @@ class _TransactionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Row(
     children: [
-      const CircleAvatar(
+      CircleAvatar(
         radius: 18,
-        backgroundColor: AppColors.surfaceRaised,
-        child: Icon(Icons.south_west_rounded, size: 17),
+        backgroundColor: Theme.of(context).colorScheme.surface,
+        child: const Icon(Icons.south_west_rounded, size: 17),
       ),
       const SizedBox(width: 12),
       Expanded(
