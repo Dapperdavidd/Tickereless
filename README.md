@@ -33,9 +33,9 @@ flutter pub get
 flutter run
 ```
 
-The app defaults to `http://127.0.0.1:8080` for iOS Simulator development.
-Override the API origin for a physical device or Android emulator without
-changing source code:
+The app defaults to the deployed Railway API at
+`https://api-production-b1d0b.up.railway.app`. Override the API origin for
+local development without changing source code:
 
 ```shell
 flutter run --dart-define=TICKERLESS_API_URL=http://10.0.2.2:8080
