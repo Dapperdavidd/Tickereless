@@ -1,0 +1,11 @@
+.git
+.env
+.workspace-notes
+.zed
+apps
+broadcast
+contracts
+deployments
+target
+*.log
+*.DS_Store

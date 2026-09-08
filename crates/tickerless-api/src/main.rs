@@ -22,7 +22,8 @@ async fn main() -> io::Result<()> {
         .init();
 
     let host = env::var("TICKERLESS_API_HOST").unwrap_or_else(|_| DEFAULT_HOST.to_owned());
-    let port = env::var("TICKERLESS_API_PORT")
+    let port = env::var("PORT")
+        .or_else(|_| env::var("TICKERLESS_API_PORT"))
         .ok()
         .and_then(|value| value.parse().ok())
         .unwrap_or(DEFAULT_PORT);
