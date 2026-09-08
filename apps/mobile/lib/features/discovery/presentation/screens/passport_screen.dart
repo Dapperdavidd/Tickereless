@@ -20,6 +20,8 @@ import 'package:tickerless/features/market/presentation/widgets/news_list.dart';
 import 'package:tickerless/features/market/presentation/widgets/price_chart.dart';
 import 'package:tickerless/features/market/presentation/widgets/range_selector.dart';
 import 'package:tickerless/features/market/presentation/widgets/stat_strip.dart';
+import 'package:tickerless/features/portfolio/domain/entities/owned_position.dart';
+import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 
 /// Everything known about one company, and the way to own a piece of it.
 ///
@@ -176,6 +178,29 @@ class _PassportView extends StatelessWidget {
               ),
             ),
             const Divider(height: 30, color: AppColors.border),
+            if (args.position case final position?) ...[
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: StatStrip(
+                  stats: [
+                    (
+                      label: 'You own',
+                      value: '${position.tokens.toStringAsFixed(4)} tokens',
+                    ),
+                    (
+                      label: 'Position',
+                      value: '\$${position.invested.toStringAsFixed(2)}',
+                    ),
+                    (
+                      label: 'Today',
+                      value:
+                          '${company.change >= 0 ? '+' : ''}${company.change.toStringAsFixed(2)}%',
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 30, color: AppColors.border),
+            ],
             _PassportTabs(company: company, articles: state.articles),
             const Divider(height: 30, color: AppColors.border),
             Padding(
@@ -205,6 +230,7 @@ class _PassportView extends StatelessWidget {
       ),
       bottomNavigationBar: _OwnBar(
         company: company,
+        position: args.position,
         onOwn: () => _own(context),
       ),
     );
@@ -361,15 +387,78 @@ class _PassportTabsState extends State<_PassportTabs> {
 }
 
 /// The one action on the page, pinned so it never scrolls away.
-class _OwnBar extends StatelessWidget {
-  const _OwnBar({required this.company, required this.onOwn});
+class _OwnBar extends StatefulWidget {
+  const _OwnBar({
+    required this.company,
+    required this.position,
+    required this.onOwn,
+  });
 
   final Company company;
+  final OwnedPosition? position;
   final VoidCallback onOwn;
 
   @override
+  State<_OwnBar> createState() => _OwnBarState();
+}
+
+class _OwnBarState extends State<_OwnBar> {
+  bool _selling = false;
+
+  Future<void> _sell() async {
+    final position = widget.position;
+    final session = context.read<AuthBloc>().state.session;
+    if (position == null || session == null || _selling) return;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text('Sell ${widget.company.symbol}?'),
+        content: Text(
+          'Redeem ${position.tokens.toStringAsFixed(4)} test tokens for '
+          '\$${position.invested.toStringAsFixed(2)} test USDC. Two Base '
+          'Sepolia confirmations are required.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('Sell all'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() => _selling = true);
+    try {
+      final result = await context.read<ChainGateway>().sell(
+        userId: session.userId,
+        company: widget.company,
+        tokens: position.tokens,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            '\$${result.usdc.toStringAsFixed(2)} USDC returned to your wallet.',
+          ),
+        ),
+      );
+      context.go(AppRoutes.activity);
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.toString().replaceFirst('Failure: ', ''))),
+      );
+      setState(() => _selling = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final supported = ChainConfig.assets.containsKey(company.ticker);
+    final supported = ChainConfig.assets.containsKey(widget.company.ticker);
     return DecoratedBox(
       decoration: const BoxDecoration(
         color: AppColors.background,
@@ -382,14 +471,33 @@ class _OwnBar extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              BlocBuilder<AuthBloc, AuthState>(
-                buildWhen: (previous, current) => previous.mode != current.mode,
-                builder: (context, _) => FilledButton(
-                  onPressed: supported ? onOwn : null,
-                  child: Text(
-                    supported ? 'Own ${company.name}' : 'News only on testnet',
+              Row(
+                children: [
+                  if (widget.position != null) ...[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: _selling ? null : _sell,
+                        child: Text(_selling ? 'Selling…' : 'Sell'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                  ],
+                  Expanded(
+                    flex: widget.position == null ? 1 : 2,
+                    child: BlocBuilder<AuthBloc, AuthState>(
+                      buildWhen: (previous, current) =>
+                          previous.mode != current.mode,
+                      builder: (context, _) => FilledButton(
+                        onPressed: supported ? widget.onOwn : null,
+                        child: Text(
+                          supported
+                              ? 'Buy ${widget.company.name}'
+                              : 'News only on testnet',
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ],
               ),
               const SizedBox(height: 8),
               const Text(

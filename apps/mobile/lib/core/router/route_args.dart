@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:tickerless/features/discovery/domain/entities/company.dart';
+import 'package:tickerless/features/portfolio/domain/entities/owned_position.dart';
 
 /// Arguments passed through `GoRouter`'s `extra`.
 ///
@@ -8,15 +9,20 @@ import 'package:tickerless/features/discovery/domain/entities/company.dart';
 /// caller is holding.
 
 class PassportArgs extends Equatable {
-  const PassportArgs({required this.company, required this.source});
+  const PassportArgs({
+    required this.company,
+    required this.source,
+    this.position,
+  });
 
   final Company company;
 
   /// Provenance, e.g. `iPhone · Lens` — carried all the way to the receipt.
   final String source;
+  final OwnedPosition? position;
 
   @override
-  List<Object?> get props => [company, source];
+  List<Object?> get props => [company, source, position];
 }
 
 class PurchaseArgs extends Equatable {

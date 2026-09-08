@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
+import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/core/widgets/hairline_list.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
@@ -353,39 +354,59 @@ class _AssetRow extends StatelessWidget {
   const _AssetRow({required this.position});
   final OwnedPosition position;
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      CompanyAvatar(company: position.company, radius: 21),
-      const SizedBox(width: 13),
-      Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              position.company.name,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            Text(
-              position.company.symbol,
-              style: const TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-          ],
-        ),
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(14),
+    onTap: () => context.push(
+      AppRoutes.passport,
+      extra: PassportArgs(
+        company: position.company,
+        source: 'Owned asset · Wallet',
+        position: position,
       ),
-      Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
         children: [
-          Text(
-            '\$${position.invested.toStringAsFixed(2)}',
-            style: const TextStyle(fontWeight: FontWeight.w700),
+          CompanyAvatar(company: position.company, radius: 21),
+          const SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  position.company.name,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  position.company.symbol,
+                  style: const TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
           ),
-          Text(
-            '${position.tokens.toStringAsFixed(4)} tokens',
-            style: const TextStyle(color: AppColors.muted, fontSize: 11),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '\$${position.invested.toStringAsFixed(2)}',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              Text(
+                '${position.tokens.toStringAsFixed(4)} tokens',
+                style: const TextStyle(color: AppColors.muted, fontSize: 11),
+              ),
+            ],
+          ),
+          const SizedBox(width: 6),
+          const Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: AppColors.muted,
           ),
         ],
       ),
-    ],
+    ),
   );
 }
 
