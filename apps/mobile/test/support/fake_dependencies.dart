@@ -28,7 +28,7 @@ AppDependencies fakeDependencies({
 class FakeChainGateway implements ChainGateway {
   @override
   Future<OnChainSnapshot> snapshot(String walletAddress) async =>
-      const OnChainSnapshot(usdc: 15, positions: []);
+      const OnChainSnapshot(usdc: 15, eth: .0003, positions: []);
 
   @override
   Future<PurchaseResult> buy({

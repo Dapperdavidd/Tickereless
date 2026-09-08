@@ -11,8 +11,13 @@ import 'package:web3dart/web3dart.dart';
 import 'package:wallet/wallet.dart';
 
 class OnChainSnapshot {
-  const OnChainSnapshot({required this.usdc, required this.positions});
+  const OnChainSnapshot({
+    required this.usdc,
+    required this.eth,
+    required this.positions,
+  });
   final double usdc;
+  final double eth;
   final List<OwnedPosition> positions;
 }
 
@@ -71,6 +76,7 @@ class BaseSepoliaGateway implements ChainGateway {
         for (final address in ChainConfig.assets.values)
           _tokenBalance(address, owner),
       ]);
+      final eth = await _client.getBalance(owner);
       final positions = <OwnedPosition>[];
       for (final (index, ticker) in ChainConfig.assets.keys.indexed) {
         final tokens = balances[index + 1] / BigInt.from(10).pow(18);
@@ -87,6 +93,7 @@ class BaseSepoliaGateway implements ChainGateway {
       }
       return OnChainSnapshot(
         usdc: balances.first / BigInt.from(10).pow(6),
+        eth: eth.getValueInUnit(EtherUnit.ether),
         positions: positions,
       );
     } catch (error) {

@@ -11,6 +11,13 @@ void main() {
     final client = MockClient((request) async {
       final payload = jsonDecode(request.body) as Map<String, dynamic>;
       final id = payload['id'];
+      if (payload['method'] == 'eth_getBalance') {
+        return http.Response(
+          jsonEncode({'jsonrpc': '2.0', 'id': id, 'result': '0x0'}),
+          200,
+          headers: {'content-type': 'application/json'},
+        );
+      }
       final params = payload['params'] as List<dynamic>;
       final call = params.first as Map<String, dynamic>;
       final contract = (call['to'] as String).toLowerCase();
@@ -34,6 +41,7 @@ void main() {
     ).snapshot('0x10a26dc41ba973ec1a9a37156fd67354992a6ee5');
 
     expect(snapshot.usdc, 15);
+    expect(snapshot.eth, 0);
     expect(snapshot.positions, isEmpty);
   });
 }

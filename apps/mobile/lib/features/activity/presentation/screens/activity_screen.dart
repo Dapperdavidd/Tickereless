@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
@@ -97,7 +98,7 @@ class _WalletBody extends StatelessWidget {
                     ),
                   ),
                 ),
-                _AddressPill(label: shortAddress),
+                _AddressPill(label: shortAddress, address: address),
                 const SizedBox(width: 8),
                 IconButton(
                   tooltip: 'Open profile',
@@ -146,7 +147,7 @@ class _WalletBody extends StatelessWidget {
               title: 'Your Assets',
               trailing: chain == null
                   ? 'Loading on-chain…'
-                  : '${positions.length + 1} assets',
+                  : '${positions.length + 2} assets',
             ),
             const SizedBox(height: 15),
             if (chain != null)
@@ -154,6 +155,7 @@ class _WalletBody extends StatelessWidget {
                 gap: 22,
                 children: [
                   _UsdcRow(balance: chain!.usdc),
+                  _EthRow(balance: chain!.eth),
                   for (final position in positions)
                     _AssetRow(position: position),
                 ],
@@ -225,17 +227,75 @@ class _UsdcRow extends StatelessWidget {
 }
 
 class _AddressPill extends StatelessWidget {
-  const _AddressPill({required this.label});
+  const _AddressPill({required this.label, required this.address});
   final String label;
+  final String? address;
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-    decoration: BoxDecoration(
-      color: AppColors.surfaceRaised,
-      borderRadius: BorderRadius.circular(20),
-      border: Border.all(color: AppColors.border),
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(20),
+    onTap: address == null
+        ? null
+        : () async {
+            await Clipboard.setData(ClipboardData(text: address!));
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Wallet address copied.')),
+              );
+            }
+          },
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceRaised,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 11)),
+          if (address != null) ...[
+            const SizedBox(width: 5),
+            const Icon(Icons.copy_rounded, size: 11),
+          ],
+        ],
+      ),
     ),
-    child: Text(label, style: const TextStyle(fontSize: 11)),
+  );
+}
+
+class _EthRow extends StatelessWidget {
+  const _EthRow({required this.balance});
+  final double balance;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      const CircleAvatar(
+        radius: 21,
+        backgroundColor: Color(0xFF235BFF),
+        child: Icon(Icons.diamond_outlined, color: Colors.white, size: 20),
+      ),
+      const SizedBox(width: 13),
+      const Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Base Sepolia ETH',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            Text(
+              'Gas balance',
+              style: TextStyle(color: AppColors.muted, fontSize: 12),
+            ),
+          ],
+        ),
+      ),
+      Text(
+        balance.toStringAsFixed(6),
+        style: const TextStyle(fontWeight: FontWeight.w700),
+      ),
+    ],
   );
 }
 
