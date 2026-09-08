@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/core/widgets/tickerless_wordmark.dart';
+import 'package:tickerless/features/profile/presentation/widgets/current_profile_avatar.dart';
 
 /// The whole of the Discover chrome: a wordmark and three affordances, on one
 /// line. Everything else on the screen is content.
@@ -58,18 +59,12 @@ class DiscoverHeader extends StatelessWidget {
         child: GestureDetector(
           onTap: onProfile,
           child: Container(
-            width: 30,
-            height: 30,
+            padding: const EdgeInsets.all(1),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.surfaceRaised,
               border: Border.all(color: AppColors.border),
             ),
-            child: const Icon(
-              Icons.person_outline,
-              size: 17,
-              color: Colors.white,
-            ),
+            child: const CurrentProfileAvatar(size: 28),
           ),
         ),
       ),

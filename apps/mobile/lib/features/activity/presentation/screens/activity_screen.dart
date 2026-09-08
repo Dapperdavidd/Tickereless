@@ -16,6 +16,7 @@ import 'package:tickerless/features/portfolio/domain/entities/portfolio_transact
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_event.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.dart';
+import 'package:tickerless/features/profile/presentation/widgets/current_profile_avatar.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 import 'package:wallet/wallet.dart';
@@ -103,10 +104,12 @@ class _WalletBody extends StatelessWidget {
                 ),
                 _AddressPill(label: shortAddress, address: address),
                 const SizedBox(width: 8),
-                IconButton(
-                  tooltip: 'Open profile',
-                  onPressed: () => context.push(AppRoutes.profile),
-                  icon: const Icon(Icons.person_outline_rounded),
+                Tooltip(
+                  message: 'Open profile',
+                  child: GestureDetector(
+                    onTap: () => context.push(AppRoutes.profile),
+                    child: const CurrentProfileAvatar(size: 32),
+                  ),
                 ),
               ],
             ),
@@ -296,31 +299,47 @@ class _UsdcRow extends StatelessWidget {
   final double balance;
 
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      const CircleAvatar(
-        radius: 21,
-        backgroundColor: Color(0xFF2775CA),
-        child: Text(r'$ ', style: TextStyle(fontWeight: FontWeight.w800)),
-      ),
-      const SizedBox(width: 13),
-      const Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('USD Coin', style: TextStyle(fontWeight: FontWeight.w700)),
-            Text(
-              'USDC · Base Sepolia',
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(14),
+    onTap: () => context.push(
+      AppRoutes.currencyAsset,
+      extra: CurrencyAssetArgs(symbol: 'USDC', balance: balance),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 21,
+            backgroundColor: Color(0xFF2775CA),
+            child: Text(r'$ ', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+          const SizedBox(width: 13),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('USD Coin', style: TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  'USDC · Base Sepolia',
+                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Text(
+            '\$${balance.toStringAsFixed(2)}',
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(width: 6),
+          const Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: AppColors.muted,
+          ),
+        ],
       ),
-      Text(
-        '\$${balance.toStringAsFixed(2)}',
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-    ],
+    ),
   );
 }
 
@@ -366,34 +385,50 @@ class _EthRow extends StatelessWidget {
   const _EthRow({required this.balance});
   final double balance;
   @override
-  Widget build(BuildContext context) => Row(
-    children: [
-      const CircleAvatar(
-        radius: 21,
-        backgroundColor: Color(0xFF235BFF),
-        child: Icon(Icons.diamond_outlined, color: Colors.white, size: 20),
-      ),
-      const SizedBox(width: 13),
-      const Expanded(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Base Sepolia ETH',
-              style: TextStyle(fontWeight: FontWeight.w700),
+  Widget build(BuildContext context) => InkWell(
+    borderRadius: BorderRadius.circular(14),
+    onTap: () => context.push(
+      AppRoutes.currencyAsset,
+      extra: CurrencyAssetArgs(symbol: 'ETH', balance: balance),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          const CircleAvatar(
+            radius: 21,
+            backgroundColor: Color(0xFF235BFF),
+            child: Icon(Icons.diamond_outlined, color: Colors.white, size: 20),
+          ),
+          const SizedBox(width: 13),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Base Sepolia ETH',
+                  style: TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  'Gas balance',
+                  style: TextStyle(color: AppColors.muted, fontSize: 12),
+                ),
+              ],
             ),
-            Text(
-              'Gas balance',
-              style: TextStyle(color: AppColors.muted, fontSize: 12),
-            ),
-          ],
-        ),
+          ),
+          Text(
+            balance.toStringAsFixed(6),
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(width: 6),
+          const Icon(
+            Icons.chevron_right_rounded,
+            size: 18,
+            color: AppColors.muted,
+          ),
+        ],
       ),
-      Text(
-        balance.toStringAsFixed(6),
-        style: const TextStyle(fontWeight: FontWeight.w700),
-      ),
-    ],
+    ),
   );
 }
 

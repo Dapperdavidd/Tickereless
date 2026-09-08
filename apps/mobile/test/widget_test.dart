@@ -225,6 +225,11 @@ void main() {
       scrollable: find.byType(Scrollable).last,
     );
     expect(find.text('Recent Transactions'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Bought tMETAc'),
+      160,
+      scrollable: find.byType(Scrollable).last,
+    );
     expect(find.text('Bought tMETAc'), findsWidgets);
   });
 

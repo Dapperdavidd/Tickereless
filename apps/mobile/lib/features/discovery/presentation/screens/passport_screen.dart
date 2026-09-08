@@ -491,7 +491,9 @@ class _OwnBarState extends State<_OwnBar> {
                         onPressed: supported ? widget.onOwn : null,
                         child: Text(
                           supported
-                              ? 'Buy ${widget.company.name}'
+                              ? widget.position == null
+                                    ? 'Own ${widget.company.name}'
+                                    : 'Buy more ${widget.company.name}'
                               : 'News only on testnet',
                         ),
                       ),

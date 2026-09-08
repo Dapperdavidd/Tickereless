@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/router/router_refresh.dart';
 import 'package:tickerless/features/activity/presentation/screens/activity_screen.dart';
+import 'package:tickerless/features/activity/presentation/screens/currency_asset_screen.dart';
 import 'package:tickerless/features/auth/domain/entities/access_mode.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_state.dart';
@@ -28,6 +29,7 @@ abstract final class AppRoutes {
   static const discover = '/discover';
   static const world = '/world';
   static const activity = '/activity';
+  static const currencyAsset = '/currency-asset';
   static const profile = '/profile';
   static const search = '/search';
   static const lens = '/lens';
@@ -120,6 +122,11 @@ GoRouter createAppRouter(AuthBloc authBloc) => GoRouter(
     GoRoute(
       path: AppRoutes.profile,
       builder: (context, state) => const ProfileScreen(),
+    ),
+    GoRoute(
+      path: AppRoutes.currencyAsset,
+      builder: (context, state) =>
+          CurrencyAssetScreen(args: state.extra! as CurrencyAssetArgs),
     ),
     GoRoute(
       path: AppRoutes.search,

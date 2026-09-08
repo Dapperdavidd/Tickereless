@@ -59,3 +59,12 @@ class ReceiptArgs extends Equatable {
     transactionHash,
   ];
 }
+
+class CurrencyAssetArgs extends Equatable {
+  const CurrencyAssetArgs({required this.symbol, required this.balance});
+  final String symbol;
+  final double balance;
+
+  @override
+  List<Object?> get props => [symbol, balance];
+}
