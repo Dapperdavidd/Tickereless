@@ -26,6 +26,9 @@ contract TickerlessMarket {
     event Purchased(
         address indexed buyer, address indexed asset, uint256 amountUsdc, uint256 tokenAmount
     );
+    event Sold(
+        address indexed seller, address indexed asset, uint256 tokenAmount, uint256 amountUsdc
+    );
 
     constructor(address paymentToken_) {
         if (paymentToken_ == address(0)) revert ZeroAddress();
@@ -61,6 +64,18 @@ contract TickerlessMarket {
         if (tokenAmount == 0) revert InvalidAmount();
     }
 
+    function quoteSell(address asset, uint256 tokenAmount)
+        public
+        view
+        returns (uint256 amountUsdc)
+    {
+        uint256 price = priceUsdc[asset];
+        if (price == 0) revert UnsupportedAsset();
+        if (tokenAmount == 0) revert InvalidAmount();
+        amountUsdc = (tokenAmount * price) / ASSET_UNIT;
+        if (amountUsdc == 0) revert InvalidAmount();
+    }
+
     function buy(address asset, uint256 amountUsdc, uint256 minimumTokenAmount)
         external
         nonReentrant
@@ -68,11 +83,25 @@ contract TickerlessMarket {
     {
         tokenAmount = quote(asset, amountUsdc);
         if (tokenAmount < minimumTokenAmount) revert InsufficientOutput();
-        if (!paymentToken.transferFrom(msg.sender, owner, amountUsdc)) {
+        if (!paymentToken.transferFrom(msg.sender, address(this), amountUsdc)) {
             revert TokenTransferFailed();
         }
         if (!IERC20(asset).transfer(msg.sender, tokenAmount)) revert TokenTransferFailed();
         emit Purchased(msg.sender, asset, amountUsdc, tokenAmount);
+    }
+
+    function sell(address asset, uint256 tokenAmount, uint256 minimumUsdcAmount)
+        external
+        nonReentrant
+        returns (uint256 amountUsdc)
+    {
+        amountUsdc = quoteSell(asset, tokenAmount);
+        if (amountUsdc < minimumUsdcAmount) revert InsufficientOutput();
+        if (!IERC20(asset).transferFrom(msg.sender, address(this), tokenAmount)) {
+            revert TokenTransferFailed();
+        }
+        if (!paymentToken.transfer(msg.sender, amountUsdc)) revert TokenTransferFailed();
+        emit Sold(msg.sender, asset, tokenAmount, amountUsdc);
     }
 
     function withdrawAsset(address asset, address recipient, uint256 amount) external onlyOwner {

@@ -3,7 +3,7 @@ abstract final class ChainConfig {
   static const rpcUrl = 'https://sepolia.base.org';
   static const explorerUrl = 'https://sepolia.basescan.org';
   static const usdc = '0x036cbd53842c5426634e7929541ec2318f3dcf7e';
-  static const market = '0xd3f95357840737383e0b7ab2e2b13daeb3f0e83e';
+  static const market = '0xd747a01cd827ff9ad69d5d8eaaf774aaf2695c9a';
 
   static const assets = {
     'AAPL': '0xecb227cccce78c2452188e656cde26225fcbcd39',

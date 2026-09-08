@@ -38,7 +38,31 @@ contract TickerlessMarketTest {
 
         require(received == 0.025e18, "incorrect output");
         require(equity.balanceOf(BUYER) == 0.025e18, "buyer did not receive equity");
-        require(usdc.balanceOf(address(this)) == 5e6, "owner did not receive payment");
+        require(usdc.balanceOf(address(market)) == 5e6, "market did not receive payment");
+    }
+
+    function testSellReturnsUsdcAndRestoresInventory() public {
+        vm.prank(BUYER);
+        usdc.approve(address(market), 5e6);
+        vm.prank(BUYER);
+        market.buy(address(equity), 5e6, 0.025e18);
+        vm.prank(BUYER);
+        equity.approve(address(market), 0.025e18);
+        vm.prank(BUYER);
+        uint256 received = market.sell(address(equity), 0.025e18, 5e6);
+
+        require(received == 5e6, "incorrect sale output");
+        require(usdc.balanceOf(BUYER) == 100e6, "seller did not receive USDC");
+        require(equity.balanceOf(BUYER) == 0, "seller still holds equity");
+    }
+
+    function testSellEnforcesMinimumOutput() public {
+        equity.mint(BUYER, 0.025e18);
+        vm.prank(BUYER);
+        equity.approve(address(market), 0.025e18);
+        vm.expectRevert(TickerlessMarket.InsufficientOutput.selector);
+        vm.prank(BUYER);
+        market.sell(address(equity), 0.025e18, 6e6);
     }
 
     function testBuyEnforcesMinimumOutput() public {

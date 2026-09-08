@@ -1,12 +1,12 @@
 {
   "network": "Base Sepolia",
   "chainId": 84532,
-  "deployedAt": "2026-09-07T22:03:32Z",
+  "deployedAt": "2026-09-08T10:34:40Z",
   "deployer": "0x41e4aa93ee4569cc0511e20d1d0f0bad19e97335",
   "explorer": "https://sepolia.basescan.org",
   "contracts": {
     "paymentToken": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
-    "market": "0xd3f95357840737383e0b7ab2e2b13daeb3f0e83e",
+    "market": "0xd747a01cd827ff9ad69d5d8eaaf774aaf2695c9a",
     "assets": {
       "tAAPLc": "0xecb227cccce78c2452188e656cde26225fcbcd39",
       "tNVDAc": "0xf1c8912f560b89779f00a59bcb5a43b5001f8fb2",
@@ -20,7 +20,8 @@
     "tNVDAc": "0xe9b0a70e6dadd04d5466c2dac3e9eec196e181a04fd2fdbdba4c33d1262fe23c",
     "tMETAc": "0x21556194d886024953c14c94a84761f7240b22a223701e25d718abb665daf95e",
     "tGOOGLc": "0xadedf7a05382924e6659c4313d9d20164f7766833724bf73851b78ad065a08bb",
-    "market": "0x8f2b1ab497dedf704ccefabc6b74b37f6da950d025d83fb78279008e67c0e912",
+    "market": "0xdaf94013de312b92e7723c39f4fdae1cc34cfc5d70e91540b107d38573ec28aa",
+    "sellLiquidity": "0xa8dd207375291be2072bcd2c2b4ad7026ff7bad39d6cab6b4fc88db4e50c6698",
     "appUsdcFunding": "0xeea2d4a58ed28bb3781dc7e92e30337bc3b2d390befac250fa419ae2f1a8c846",
     "appGasFunding": "0xb8c36c939b662cb0ea6ecb7c06ed65e8986f17dd8dee33bb640f83ae1eaabb67"
   }
