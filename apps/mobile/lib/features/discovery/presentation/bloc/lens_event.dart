@@ -7,6 +7,11 @@ abstract class LensEvent extends Equatable {
   List<Object?> get props => [];
 }
 
+/// Clears the prior capture whenever a fresh Lens visit begins.
+class LensReset extends LensEvent {
+  const LensReset();
+}
+
 /// A frame was captured and written to [imagePath].
 class LensFrameCaptured extends LensEvent {
   const LensFrameCaptured(this.imagePath);

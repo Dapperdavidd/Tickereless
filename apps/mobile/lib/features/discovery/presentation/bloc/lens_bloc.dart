@@ -13,6 +13,7 @@ class LensBloc extends Bloc<LensEvent, LensState> {
   }) : _recognizeFrame = recognizeFrame,
        _recognizeText = recognizeText,
        super(const LensIdle()) {
+    on<LensReset>((event, emit) => emit(const LensIdle()));
     on<LensFrameCaptured>(
       (event, emit) => _scan(emit, () => _recognizeFrame(event.imagePath)),
     );

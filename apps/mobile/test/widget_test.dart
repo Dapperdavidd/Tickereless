@@ -167,6 +167,40 @@ void main() {
     expect(find.text('0x0000…00ff'), findsWidgets);
   });
 
+  testWidgets('wallet balance text toggles privacy and Receive fits', (
+    tester,
+  ) async {
+    await signIn(tester);
+    await tester.tap(find.bySemanticsLabel('Wallet'));
+    await tester.pumpAndSettle();
+
+    final visibleBalance = find.bySemanticsLabel(
+      RegExp(r'Wallet balance 15\.00 dollars'),
+    );
+    expect(visibleBalance, findsOneWidget);
+    await tester.tap(find.text(r'$15.00').first);
+    await tester.pump();
+    final hiddenBalance = find.bySemanticsLabel(
+      'Hidden wallet balance. Double tap to show.',
+    );
+    expect(hiddenBalance, findsOneWidget);
+    await tester.tap(find.text('••••••').first);
+    await tester.pump();
+    expect(visibleBalance, findsOneWidget);
+
+    await tester.tap(find.text('Receive'));
+    await tester.pumpAndSettle();
+    expect(find.text('Receive on Base Sepolia'), findsOneWidget);
+    expect(find.text('Copy address'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(BottomSheet),
+        matching: find.byType(SingleChildScrollView),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('search journey reaches a Base Sepolia ownership confirmation', (
     tester,
   ) async {
@@ -198,6 +232,38 @@ void main() {
     expect(find.text('You now own\nMeta Platforms.'), findsOneWidget);
     expect(find.text('on Base Sepolia'), findsOneWidget);
   });
+
+  for (final asset in const [
+    (query: 'AAPL', company: 'Apple'),
+    (query: 'NVDA', company: 'NVIDIA'),
+    (query: 'META', company: 'Meta Platforms'),
+    (query: 'GOOGL', company: 'Alphabet'),
+  ]) {
+    testWidgets('${asset.query} completes the full supported purchase flow', (
+      tester,
+    ) async {
+      await signIn(tester);
+
+      await tester.tap(find.byTooltip('Search'));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField), asset.query);
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      expect(find.text(asset.company), findsOneWidget);
+
+      await tester.tap(find.text('View Company →'));
+      await tester.pumpAndSettle();
+      final ownButton = find.text('Own ${asset.company}');
+      await tester.ensureVisible(ownButton);
+      await tester.tap(ownButton);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Buy with USDC'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('You now own\n${asset.company}.'), findsOneWidget);
+      expect(find.text('on Base Sepolia'), findsOneWidget);
+    });
+  }
 
   testWidgets('a purchase lands in Wallet transaction history', (tester) async {
     await signIn(tester);

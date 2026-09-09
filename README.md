@@ -239,8 +239,8 @@ The Foundry project contains:
 - `DemoPaymentToken`, a test USDC token that gives each demo wallet one self-service allocation.
 - `TickerlessMarket`, a fixed-price market that exchanges six-decimal test USDC for fractional
   18-decimal demo equities with a caller-provided minimum output.
-- A deployment script that creates tUSDC, tAAPLc, tNVDAc, tMETAc, and tGOOGLc, lists the four
-  equities, and supplies market inventory.
+- A deployment script that creates tUSDC, tAAPLc, tNVDAc, tMETAc, tGOOGLc, and tMSFTc, lists the
+  five equities, and supplies market inventory.
 
 These contracts represent demo assets only; they are not real securities. Run the contract gates
 with:
@@ -275,5 +275,6 @@ cargo run -p tickerless-api --bin register_deployment
 ```
 
 The command validates every address, chain ID, and HTTPS explorer URL before
-updating all four registry assets. Quotes and resolver results only become
+updating all configured registry assets. `TICKERLESS_MSFT_TOKEN_ADDRESS` is
+optional until Microsoft has been added to the existing market. Quotes and resolver results only become
 executable/actionable after this registration succeeds.

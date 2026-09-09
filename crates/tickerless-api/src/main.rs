@@ -103,19 +103,26 @@ fn deployment_from_env() -> io::Result<Option<DeploymentRegistration>> {
             "TICKERLESS_EXPLORER_URL must be an HTTPS URL",
         ));
     }
+    let mut assets = [
+        ("tAAPLc", "TICKERLESS_AAPL_TOKEN_ADDRESS"),
+        ("tNVDAc", "TICKERLESS_NVDA_TOKEN_ADDRESS"),
+        ("tMETAc", "TICKERLESS_META_TOKEN_ADDRESS"),
+        ("tGOOGLc", "TICKERLESS_GOOGL_TOKEN_ADDRESS"),
+    ]
+    .into_iter()
+    .map(|(symbol, name)| Ok((symbol.to_owned(), address(name)?)))
+    .collect::<io::Result<Vec<_>>>()?;
+    if env::var("TICKERLESS_MSFT_TOKEN_ADDRESS").is_ok() {
+        assets.push((
+            "tMSFTc".to_owned(),
+            address("TICKERLESS_MSFT_TOKEN_ADDRESS")?,
+        ));
+    }
     Ok(Some(DeploymentRegistration {
         market_address: address("TICKERLESS_MARKET_ADDRESS")?,
         payment_token_address: address("TICKERLESS_PAYMENT_TOKEN_ADDRESS")?,
         chain_id,
         explorer_url: explorer_url.trim_end_matches('/').to_owned(),
-        assets: [
-            ("tAAPLc", "TICKERLESS_AAPL_TOKEN_ADDRESS"),
-            ("tNVDAc", "TICKERLESS_NVDA_TOKEN_ADDRESS"),
-            ("tMETAc", "TICKERLESS_META_TOKEN_ADDRESS"),
-            ("tGOOGLc", "TICKERLESS_GOOGL_TOKEN_ADDRESS"),
-        ]
-        .into_iter()
-        .map(|(symbol, name)| Ok((symbol.to_owned(), address(name)?)))
-        .collect::<io::Result<Vec<_>>>()?,
+        assets,
     }))
 }

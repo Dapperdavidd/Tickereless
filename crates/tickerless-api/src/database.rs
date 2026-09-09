@@ -565,6 +565,17 @@ mod tests {
             meta.asset.as_ref().map(|asset| asset.symbol.as_str()),
             Some("tMETAc")
         );
+        let microsoft = catalog
+            .find_by_slug("microsoft")
+            .expect("seeded Microsoft company should exist");
+        assert_eq!(microsoft.ticker, "MSFT");
+        assert_eq!(
+            microsoft
+                .asset
+                .as_ref()
+                .map(|asset| (asset.symbol.as_str(), asset.contract_address.as_ref())),
+            Some(("tMSFTc", None))
+        );
     }
 
     #[sqlx::test(migrator = "MIGRATOR")]

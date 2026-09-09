@@ -135,6 +135,7 @@ fn asset(symbol: &str) -> Option<TokenizedAsset> {
             "tNVDAc" => rust_decimal::Decimal::new(180, 0),
             "tMETAc" => rust_decimal::Decimal::new(500, 0),
             "tGOOGLc" => rust_decimal::Decimal::new(150, 0),
+            "tMSFTc" => rust_decimal::Decimal::new(4302, 1),
             _ => rust_decimal::Decimal::ZERO,
         },
     })
@@ -302,7 +303,7 @@ fn seed_companies() -> Vec<Company> {
                 .into_iter()
                 .map(str::to_owned)
                 .collect(),
-            asset: None,
+            asset: asset("tMSFTc"),
         },
     ]
 }

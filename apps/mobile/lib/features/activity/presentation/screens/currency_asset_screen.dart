@@ -17,11 +17,9 @@ class CurrencyAssetScreen extends StatelessWidget {
     final isUsdc = args.symbol == 'USDC';
     final name = isUsdc ? 'USD Coin' : 'Base Sepolia ETH';
     final color = isUsdc ? const Color(0xFF2775CA) : const Color(0xFF235BFF);
-    final series = PriceSeries(
+    final usdcReference = PriceSeries(
       range: ChartRange.day,
-      values: isUsdc
-          ? const [1, 1, 1, 1, 1, 1, 1]
-          : const [.92, .96, .94, 1.01, .98, 1.04, 1.02],
+      values: const [1, 1, 1, 1, 1, 1, 1],
       isDemo: true,
     );
     return Scaffold(
@@ -47,11 +45,14 @@ class CurrencyAssetScreen extends StatelessWidget {
             style: const TextStyle(color: AppColors.muted),
           ),
           const SizedBox(height: 22),
-          PriceChart(series: series, color: color, height: 210),
+          if (isUsdc)
+            PriceChart(series: usdcReference, color: color, height: 210)
+          else
+            const _LiveChartUnavailable(),
           Text(
             isUsdc
-                ? 'USDC targets a stable \$1 reference value. This line is descriptive, not a live exchange feed.'
-                : 'Illustrative testnet activity · not a live ETH market price',
+                ? 'Stable \$1 reference · descriptive, not a live exchange feed'
+                : 'No synthetic price movement is shown.',
             style: const TextStyle(color: AppColors.muted, fontSize: 11),
           ),
           const SizedBox(height: 28),
@@ -90,4 +91,45 @@ class CurrencyAssetScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LiveChartUnavailable extends StatelessWidget {
+  const _LiveChartUnavailable();
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: 'Live Base Sepolia ETH chart unavailable',
+    child: Container(
+      height: 210,
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Theme.of(context).dividerColor),
+      ),
+      child: const Center(
+        child: Padding(
+          padding: EdgeInsets.all(28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.query_stats_rounded, color: AppColors.muted),
+              SizedBox(height: 10),
+              Text(
+                'Live market chart unavailable',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+              SizedBox(height: 5),
+              Text(
+                'Connect a verified ETH price-history feed to display real movement.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: AppColors.muted, fontSize: 12),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
 }

@@ -33,6 +33,7 @@ class _LensScreenState extends State<LensScreen> {
   @override
   void initState() {
     super.initState();
+    context.read<LensBloc>().add(const LensReset());
     _initializeCamera();
   }
 
@@ -216,15 +217,30 @@ class _LensReadout extends StatelessWidget {
         if (match == null)
           _ShutterButton(busy: busy, retry: state is! LensIdle, onTap: onScan)
         else
-          FilledButton(
-            onPressed: () => context.push(
-              AppRoutes.passport,
-              extra: PassportArgs(
-                company: match.company,
-                source: DiscoverySource.lens.describe('Camera scan'),
+          Row(
+            children: [
+              Expanded(
+                child: FilledButton(
+                  onPressed: () {
+                    context.read<LensBloc>().add(const LensReset());
+                    context.push(
+                      AppRoutes.passport,
+                      extra: PassportArgs(
+                        company: match.company,
+                        source: DiscoverySource.lens.describe('Camera scan'),
+                      ),
+                    );
+                  },
+                  child: Text('Explore ${match.company.name}'),
+                ),
               ),
-            ),
-            child: Text('Explore ${match.company.name}'),
+              const SizedBox(width: 10),
+              IconButton.outlined(
+                onPressed: busy ? null : onScan,
+                tooltip: 'Scan again',
+                icon: const Icon(Icons.center_focus_strong_rounded),
+              ),
+            ],
           ),
       ],
     );
@@ -236,7 +252,7 @@ class _LensReadout extends StatelessWidget {
   };
 
   String get _subhead => switch (state) {
-    LensUnmatched() => 'Try AAPL, GOOGL, META or NVDA products',
+    LensUnmatched() => 'Try Apple, Google, Meta, Microsoft or NVIDIA',
     LensFailed() => 'The resolver could not be reached',
     _ => 'Products, packaging, screens',
   };

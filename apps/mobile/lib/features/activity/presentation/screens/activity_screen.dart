@@ -212,16 +212,33 @@ class _WalletBody extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: Text(
-                    balancesHidden ? '••••••' : '\$${total.toStringAsFixed(2)}',
-                    semanticsLabel: balancesHidden
-                        ? 'Wallet balance hidden'
-                        : 'Wallet balance ${total.toStringAsFixed(2)} dollars',
-                    style: const TextStyle(
-                      fontSize: 46,
-                      height: 1,
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: -2,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Semantics(
+                      button: onToggleBalances != null,
+                      label: balancesHidden
+                          ? 'Hidden wallet balance. Double tap to show.'
+                          : 'Wallet balance ${total.toStringAsFixed(2)} dollars. Double tap to hide.',
+                      child: InkWell(
+                        onTap: onToggleBalances,
+                        borderRadius: BorderRadius.circular(10),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: ExcludeSemantics(
+                            child: Text(
+                              balancesHidden
+                                  ? '••••••'
+                                  : '\$${total.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 46,
+                                height: 1,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: -2,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -381,9 +398,10 @@ class _WalletBody extends StatelessWidget {
   void _showReceive(BuildContext context, String walletAddress) {
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       builder: (context) => SafeArea(
-        child: SingleChildScrollView(
+        child: Padding(
           padding: const EdgeInsets.fromLTRB(28, 8, 28, 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -406,7 +424,7 @@ class _WalletBody extends StatelessWidget {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(14),
-                  child: QrImageView(data: walletAddress, size: 172),
+                  child: QrImageView(data: walletAddress, size: 160),
                 ),
               ),
               const SizedBox(height: 18),

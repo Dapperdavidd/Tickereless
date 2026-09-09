@@ -78,7 +78,7 @@ class BaseSepoliaGateway implements ChainGateway {
     'ERC20',
   );
   static final _marketAbi = ContractAbi.fromJson(
-    '[{"type":"function","name":"buy","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"amountUsdc","type":"uint256"},{"name":"minimumTokenAmount","type":"uint256"}],"outputs":[{"name":"tokenAmount","type":"uint256"}]},{"type":"function","name":"sell","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"tokenAmount","type":"uint256"},{"name":"minimumUsdcAmount","type":"uint256"}],"outputs":[{"name":"amountUsdc","type":"uint256"}]}]',
+    '[{"type":"function","name":"quote","stateMutability":"view","inputs":[{"name":"asset","type":"address"},{"name":"amountUsdc","type":"uint256"}],"outputs":[{"name":"tokenAmount","type":"uint256"}]},{"type":"function","name":"quoteSell","stateMutability":"view","inputs":[{"name":"asset","type":"address"},{"name":"tokenAmount","type":"uint256"}],"outputs":[{"name":"amountUsdc","type":"uint256"}]},{"type":"function","name":"buy","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"amountUsdc","type":"uint256"},{"name":"minimumTokenAmount","type":"uint256"}],"outputs":[{"name":"tokenAmount","type":"uint256"}]},{"type":"function","name":"sell","stateMutability":"nonpayable","inputs":[{"name":"asset","type":"address"},{"name":"tokenAmount","type":"uint256"},{"name":"minimumUsdcAmount","type":"uint256"}],"outputs":[{"name":"amountUsdc","type":"uint256"}]}]',
     'TickerlessMarket',
   );
 
@@ -186,8 +186,7 @@ class BaseSepoliaGateway implements ChainGateway {
     required double tokens,
   }) async {
     final assetHex = ChainConfig.assets[company.ticker];
-    final price = ChainConfig.prices[company.ticker];
-    if (assetHex == null || price == null) {
+    if (assetHex == null) {
       throw const WalletFailure(
         'This asset cannot be sold in the test market.',
       );
@@ -200,9 +199,6 @@ class BaseSepoliaGateway implements ChainGateway {
       final tokenAmount = BigInt.from(
         (tokens * BigInt.from(10).pow(18).toDouble()).round(),
       );
-      final usdcAmount =
-          (tokenAmount * BigInt.from((price * 1000000).round())) ~/
-          BigInt.from(10).pow(18);
       final asset = DeployedContract(
         _erc20Abi,
         EthereumAddress.fromHex(assetHex),
@@ -211,6 +207,12 @@ class BaseSepoliaGateway implements ChainGateway {
         _marketAbi,
         EthereumAddress.fromHex(ChainConfig.market),
       );
+      final quote = await _client.call(
+        contract: market,
+        function: market.function('quoteSell'),
+        params: [EthereumAddress.fromHex(assetHex), tokenAmount],
+      );
+      final usdcAmount = quote.single as BigInt;
       final approval = await _client.sendTransaction(
         credentials,
         Transaction.callContract(
@@ -252,20 +254,17 @@ class BaseSepoliaGateway implements ChainGateway {
     required double usdc,
   }) async {
     final assetHex = ChainConfig.assets[company.ticker];
-    final price = ChainConfig.prices[company.ticker];
-    if (assetHex == null || price == null) {
+    if (assetHex == null) {
       throw const WalletFailure(
         'This asset is not available in the test market.',
       );
     }
+    if (usdc <= 0) throw const WalletFailure('Enter an amount to buy.');
     try {
       final credentials = EthPrivateKey.fromHex(
         await _wallets.readPrivateKey(userId),
       );
       final amount = BigInt.from((usdc * 1000000).round());
-      final tokenAmount =
-          (amount * BigInt.from(10).pow(18)) ~/
-          BigInt.from((price * 1000000).round());
       final usdcContract = DeployedContract(
         _erc20Abi,
         EthereumAddress.fromHex(ChainConfig.usdc),
@@ -274,6 +273,12 @@ class BaseSepoliaGateway implements ChainGateway {
         _marketAbi,
         EthereumAddress.fromHex(ChainConfig.market),
       );
+      final quote = await _client.call(
+        contract: market,
+        function: market.function('quote'),
+        params: [EthereumAddress.fromHex(assetHex), amount],
+      );
+      final tokenAmount = quote.single as BigInt;
       final approveHash = await _client.sendTransaction(
         credentials,
         Transaction.callContract(
@@ -341,6 +346,7 @@ class BaseSepoliaGateway implements ChainGateway {
     'NVDA' => DemoCompanies.nvidia,
     'META' => DemoCompanies.meta,
     'GOOGL' => DemoCompanies.alphabet,
+    'MSFT' => DemoCompanies.microsoft,
     _ => throw ArgumentError.value(ticker),
   };
 }

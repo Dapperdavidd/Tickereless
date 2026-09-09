@@ -21,9 +21,19 @@ void main() {
       final params = payload['params'] as List<dynamic>;
       final call = params.first as Map<String, dynamic>;
       final contract = (call['to'] as String).toLowerCase();
-      final value = contract == '0x036cbd53842c5426634e7929541ec2318f3dcf7e'
-          ? BigInt.from(15 * 1000000)
-          : BigInt.zero;
+      final value = switch (contract) {
+        '0x036cbd53842c5426634e7929541ec2318f3dcf7e' => BigInt.from(
+          15 * 1000000,
+        ),
+        '0xecb227cccce78c2452188e656cde26225fcbcd39' => BigInt.from(10).pow(18),
+        '0xf1c8912f560b89779f00a59bcb5a43b5001f8fb2' =>
+          BigInt.two * BigInt.from(10).pow(18),
+        '0x1a8babbe375b00d82281b4a5323b7587df0ceee6' =>
+          BigInt.from(3) * BigInt.from(10).pow(18),
+        '0xba66850b6bb6ad7460db33ef057f0ce6c022df89' =>
+          BigInt.from(4) * BigInt.from(10).pow(18),
+        _ => BigInt.zero,
+      };
       return http.Response(
         jsonEncode({
           'jsonrpc': '2.0',
@@ -42,7 +52,18 @@ void main() {
 
     expect(snapshot.usdc, 15);
     expect(snapshot.eth, 0);
-    expect(snapshot.positions, isEmpty);
+    expect(snapshot.positions.map((position) => position.company.ticker), [
+      'AAPL',
+      'NVDA',
+      'META',
+      'GOOGL',
+    ]);
+    expect(snapshot.positions.map((position) => position.invested), [
+      200,
+      360,
+      1500,
+      600,
+    ]);
   });
 }
 

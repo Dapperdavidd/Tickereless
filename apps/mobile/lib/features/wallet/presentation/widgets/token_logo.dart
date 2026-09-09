@@ -23,10 +23,18 @@ class TokenLogo extends StatelessWidget {
     return Semantics(
       image: true,
       label: '$normalized token logo',
-      child: SvgPicture.asset(
-        'assets/tokens/$normalized.svg',
-        width: size,
-        height: size,
+      child: RepaintBoundary(
+        child: SizedBox.square(
+          dimension: size,
+          child: SvgPicture.asset(
+            'assets/tokens/$normalized.svg',
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            excludeFromSemantics: true,
+          ),
+        ),
       ),
     );
   }

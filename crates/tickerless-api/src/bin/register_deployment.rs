@@ -7,29 +7,36 @@ use url::Url;
 async fn main() -> Result<(), Box<dyn Error>> {
     dotenvy::dotenv().ok();
     let database_url = required("DATABASE_URL")?;
+    let mut assets = vec![
+        (
+            "tAAPLc".to_owned(),
+            address("TICKERLESS_AAPL_TOKEN_ADDRESS")?,
+        ),
+        (
+            "tNVDAc".to_owned(),
+            address("TICKERLESS_NVDA_TOKEN_ADDRESS")?,
+        ),
+        (
+            "tMETAc".to_owned(),
+            address("TICKERLESS_META_TOKEN_ADDRESS")?,
+        ),
+        (
+            "tGOOGLc".to_owned(),
+            address("TICKERLESS_GOOGL_TOKEN_ADDRESS")?,
+        ),
+    ];
+    if env::var("TICKERLESS_MSFT_TOKEN_ADDRESS").is_ok() {
+        assets.push((
+            "tMSFTc".to_owned(),
+            address("TICKERLESS_MSFT_TOKEN_ADDRESS")?,
+        ));
+    }
     let registration = DeploymentRegistration {
         market_address: address("TICKERLESS_MARKET_ADDRESS")?,
         payment_token_address: address("TICKERLESS_PAYMENT_TOKEN_ADDRESS")?,
         chain_id: required("TICKERLESS_CHAIN_ID")?.parse()?,
         explorer_url: explorer_url()?,
-        assets: vec![
-            (
-                "tAAPLc".to_owned(),
-                address("TICKERLESS_AAPL_TOKEN_ADDRESS")?,
-            ),
-            (
-                "tNVDAc".to_owned(),
-                address("TICKERLESS_NVDA_TOKEN_ADDRESS")?,
-            ),
-            (
-                "tMETAc".to_owned(),
-                address("TICKERLESS_META_TOKEN_ADDRESS")?,
-            ),
-            (
-                "tGOOGLc".to_owned(),
-                address("TICKERLESS_GOOGL_TOKEN_ADDRESS")?,
-            ),
-        ],
+        assets,
     };
     if registration.chain_id <= 0 {
         return Err(io::Error::other("TICKERLESS_CHAIN_ID must be positive").into());

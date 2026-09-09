@@ -21,6 +21,7 @@ contract DeployTickerless {
         DemoToken nvidia;
         DemoToken meta;
         DemoToken alphabet;
+        DemoToken microsoft;
         TickerlessMarket market;
     }
 
@@ -35,12 +36,14 @@ contract DeployTickerless {
         deployment.nvidia = new DemoToken("Demo NVIDIA", "tNVDAc", 18);
         deployment.meta = new DemoToken("Demo Meta", "tMETAc", 18);
         deployment.alphabet = new DemoToken("Demo Alphabet", "tGOOGLc", 18);
+        deployment.microsoft = new DemoToken("Demo Microsoft", "tMSFTc", 18);
         deployment.market = new TickerlessMarket(address(deployment.usdc));
 
         _list(deployment.apple, deployment.market, 200e6);
         _list(deployment.nvidia, deployment.market, 180e6);
         _list(deployment.meta, deployment.market, 500e6);
         _list(deployment.alphabet, deployment.market, 150e6);
+        _list(deployment.microsoft, deployment.market, 430.2e6);
 
         vm.stopBroadcast();
     }

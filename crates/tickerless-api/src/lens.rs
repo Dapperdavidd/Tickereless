@@ -40,6 +40,11 @@ const PRODUCT_HINTS: &[(&[&str], &str)] = &[
     (&["search engine", "web search"], "Google"),
     (&["video sharing", "video platform"], "YouTube"),
     (&["android phone", "pixel phone"], "Google Pixel"),
+    (&["apple logo", "apple symbol"], "Apple"),
+    (&["nvidia logo"], "NVIDIA"),
+    (&["google logo"], "Google"),
+    (&["meta logo"], "Meta"),
+    (&["microsoft logo", "windows logo"], "Microsoft"),
     (&["surface computer", "surface tablet"], "Microsoft Surface"),
     (&["windows computer", "windows laptop"], "Microsoft Windows"),
     (&["game console", "gaming console"], "Microsoft Xbox"),
@@ -167,6 +172,11 @@ mod tests {
             ("graphics processing unit", "nvidia"),
             ("Android phone", "alphabet"),
             ("Windows computer", "microsoft"),
+            ("Apple logo", "apple"),
+            ("NVIDIA logo", "nvidia"),
+            ("Google logo", "alphabet"),
+            ("Meta logo", "meta"),
+            ("Microsoft logo", "microsoft"),
         ] {
             let result = resolve(
                 &catalog,

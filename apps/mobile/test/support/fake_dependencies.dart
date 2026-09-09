@@ -111,13 +111,27 @@ class FakeNewsRepository implements NewsRepository {
 /// A deterministic resolver response used only after the UI submits a query.
 class FakeDiscoveryRepository implements DiscoveryRepository {
   @override
-  Future<List<CompanyMatch>> search(String query) async => const [
-    CompanyMatch(
-      company: DemoCompanies.meta,
-      reason: 'Instagram is associated with Meta Platforms.',
-      confidence: .95,
-    ),
-  ];
+  Future<List<CompanyMatch>> search(String query) async {
+    final normalized = query.toLowerCase();
+    final company = switch (normalized) {
+      _ when normalized.contains('apple') || normalized.contains('aapl') =>
+        DemoCompanies.apple,
+      _ when normalized.contains('nvidia') || normalized.contains('nvda') =>
+        DemoCompanies.nvidia,
+      _ when normalized.contains('google') || normalized.contains('googl') =>
+        DemoCompanies.alphabet,
+      _ when normalized.contains('microsoft') || normalized.contains('msft') =>
+        DemoCompanies.microsoft,
+      _ => DemoCompanies.meta,
+    };
+    return [
+      CompanyMatch(
+        company: company,
+        reason: '$query is associated with ${company.name}.',
+        confidence: .95,
+      ),
+    ];
+  }
 
   @override
   Future<List<CompanyMatch>> resolveLink(String url) async => const [];
@@ -129,5 +143,5 @@ class FakeDiscoveryRepository implements DiscoveryRepository {
   Future<List<CompanyMatch>> recognizeText(
     String text, {
     List<String> labels = const [],
-  }) async => const [];
+  }) => search('$text ${labels.join(' ')}');
 }
