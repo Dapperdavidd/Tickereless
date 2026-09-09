@@ -7,6 +7,7 @@ import 'package:tickerless/features/discovery/data/registry/demo_companies.dart'
 import 'package:tickerless/features/discovery/domain/entities/company.dart';
 import 'package:tickerless/features/portfolio/domain/entities/owned_position.dart';
 import 'package:tickerless/features/wallet/data/datasource/wallet_local_datasource.dart';
+import 'package:tickerless/features/wallet/data/wallet_failure_mapper.dart';
 import 'package:web3dart/web3dart.dart';
 import 'package:wallet/wallet.dart';
 
@@ -112,7 +113,7 @@ class BaseSepoliaGateway implements ChainGateway {
         positions: positions,
       );
     } catch (error) {
-      throw WalletFailure('Could not read Base Sepolia balances: $error');
+      throw presentableWalletFailure(error, operation: WalletOperation.load);
     }
   }
 
@@ -127,6 +128,15 @@ class BaseSepoliaGateway implements ChainGateway {
       final credentials = EthPrivateKey.fromHex(
         await _wallets.readPrivateKey(userId),
       );
+      await _requireNetworkFee(credentials.address);
+      final amountUnits = BigInt.from((amount * 1000000).round());
+      if (await _tokenBalance(ChainConfig.usdc, credentials.address) <
+          amountUnits) {
+        throw const WalletFailure(
+          'Your USDC balance is too low for this transaction.',
+          kind: WalletFailureKind.insufficientBalance,
+        );
+      }
       final contract = DeployedContract(
         _erc20Abi,
         EthereumAddress.fromHex(ChainConfig.usdc),
@@ -136,18 +146,17 @@ class BaseSepoliaGateway implements ChainGateway {
         Transaction.callContract(
           contract: contract,
           function: contract.function('transfer'),
-          parameters: [
-            EthereumAddress.fromHex(recipient),
-            BigInt.from((amount * 1000000).round()),
-          ],
+          parameters: [EthereumAddress.fromHex(recipient), amountUnits],
         ),
         chainId: ChainConfig.chainId,
       );
       await _confirmed(hash);
       return TransferResult(hash: hash);
     } catch (error) {
-      if (error is WalletFailure) rethrow;
-      throw WalletFailure('USDC transfer failed: $error');
+      throw presentableWalletFailure(
+        error,
+        operation: WalletOperation.usdcTransfer,
+      );
     }
   }
 
@@ -163,6 +172,13 @@ class BaseSepoliaGateway implements ChainGateway {
         await _wallets.readPrivateKey(userId),
       );
       final wei = BigInt.from((amount * 1e18).round());
+      final available = await _client.getBalance(credentials.address);
+      if (available.getInWei <= wei) {
+        throw const WalletFailure(
+          'Your Base Sepolia ETH balance is too low for the amount and network fee.',
+          kind: WalletFailureKind.insufficientBalance,
+        );
+      }
       final hash = await _client.sendTransaction(
         credentials,
         Transaction(
@@ -174,8 +190,10 @@ class BaseSepoliaGateway implements ChainGateway {
       await _confirmed(hash);
       return TransferResult(hash: hash);
     } catch (error) {
-      if (error is WalletFailure) rethrow;
-      throw WalletFailure('ETH transfer failed: $error');
+      throw presentableWalletFailure(
+        error,
+        operation: WalletOperation.ethTransfer,
+      );
     }
   }
 
@@ -196,9 +214,16 @@ class BaseSepoliaGateway implements ChainGateway {
       final credentials = EthPrivateKey.fromHex(
         await _wallets.readPrivateKey(userId),
       );
+      await _requireNetworkFee(credentials.address);
       final tokenAmount = BigInt.from(
         (tokens * BigInt.from(10).pow(18).toDouble()).round(),
       );
+      if (await _tokenBalance(assetHex, credentials.address) < tokenAmount) {
+        throw const WalletFailure(
+          'Your asset balance is too low for this sale.',
+          kind: WalletFailureKind.insufficientBalance,
+        );
+      }
       final asset = DeployedContract(
         _erc20Abi,
         EthereumAddress.fromHex(assetHex),
@@ -242,8 +267,7 @@ class BaseSepoliaGateway implements ChainGateway {
       await _confirmed(hash);
       return SaleResult(hash: hash, usdc: usdcAmount / BigInt.from(10).pow(6));
     } catch (error) {
-      if (error is WalletFailure) rethrow;
-      throw WalletFailure('Base Sepolia sale failed: $error');
+      throw presentableWalletFailure(error, operation: WalletOperation.sale);
     }
   }
 
@@ -265,6 +289,13 @@ class BaseSepoliaGateway implements ChainGateway {
         await _wallets.readPrivateKey(userId),
       );
       final amount = BigInt.from((usdc * 1000000).round());
+      await _requireNetworkFee(credentials.address);
+      if (await _tokenBalance(ChainConfig.usdc, credentials.address) < amount) {
+        throw const WalletFailure(
+          'Your USDC balance is too low for this purchase.',
+          kind: WalletFailureKind.insufficientBalance,
+        );
+      }
       final usdcContract = DeployedContract(
         _erc20Abi,
         EthereumAddress.fromHex(ChainConfig.usdc),
@@ -304,8 +335,10 @@ class BaseSepoliaGateway implements ChainGateway {
         tokens: tokenAmount / BigInt.from(10).pow(18),
       );
     } catch (error) {
-      if (error is WalletFailure) rethrow;
-      throw WalletFailure('Base Sepolia purchase failed: $error');
+      throw presentableWalletFailure(
+        error,
+        operation: WalletOperation.purchase,
+      );
     }
   }
 
@@ -323,6 +356,16 @@ class BaseSepoliaGateway implements ChainGateway {
       params: [owner],
     );
     return result.single as BigInt;
+  }
+
+  Future<void> _requireNetworkFee(EthereumAddress owner) async {
+    final balance = await _client.getBalance(owner);
+    if (balance.getInWei == BigInt.zero) {
+      throw const WalletFailure(
+        'You need Base Sepolia ETH to pay the network fee. Add test ETH to your wallet and try again.',
+        kind: WalletFailureKind.needsNetworkFee,
+      );
+    }
   }
 
   Future<void> _confirmed(String hash) async {

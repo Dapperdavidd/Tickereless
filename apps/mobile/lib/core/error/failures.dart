@@ -19,7 +19,16 @@ class ResolverFailure extends Failure {
 
 /// Deriving, reading, or storing the account wallet failed.
 class WalletFailure extends Failure {
-  const WalletFailure(super.message);
+  const WalletFailure(super.message, {this.kind = WalletFailureKind.general});
+
+  final WalletFailureKind kind;
+}
+
+enum WalletFailureKind {
+  general,
+  needsNetworkFee,
+  insufficientBalance,
+  network,
 }
 
 /// Persisting to the device failed.

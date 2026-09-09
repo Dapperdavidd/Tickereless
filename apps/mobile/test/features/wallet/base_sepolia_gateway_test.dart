@@ -3,8 +3,11 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
+import 'package:tickerless/core/error/failures.dart';
+import 'package:tickerless/features/discovery/data/registry/demo_companies.dart';
 import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 import 'package:tickerless/features/wallet/data/datasource/wallet_local_datasource.dart';
+import 'package:tickerless/features/wallet/data/wallet_failure_mapper.dart';
 
 void main() {
   test('decodes USDC and asset balances from contract calls', () async {
@@ -65,6 +68,55 @@ void main() {
       600,
     ]);
   });
+
+  test('maps raw RPC gas errors to an actionable user message', () {
+    final failure = presentableWalletFailure(
+      Exception(
+        'RPCError: got code -32000 with msg "gas required exceeds allowance (0)"',
+      ),
+      operation: WalletOperation.purchase,
+    );
+
+    expect(failure.kind, WalletFailureKind.needsNetworkFee);
+    expect(
+      failure.message,
+      'You need Base Sepolia ETH to pay the network fee. Add test ETH to your wallet and try again.',
+    );
+    expect(failure.message, isNot(contains('RPCError')));
+    expect(failure.message, isNot(contains('-32000')));
+  });
+
+  test('purchase stops before signing when the wallet has no gas', () async {
+    final client = MockClient((request) async {
+      final payload = jsonDecode(request.body) as Map<String, dynamic>;
+      return http.Response(
+        jsonEncode({'jsonrpc': '2.0', 'id': payload['id'], 'result': '0x0'}),
+        200,
+        headers: {'content-type': 'application/json'},
+      );
+    });
+    final gateway = BaseSepoliaGateway(
+      wallets: _WalletsWithKey(),
+      httpClient: client,
+    );
+
+    await expectLater(
+      gateway.buy(userId: 'owner', company: DemoCompanies.meta, usdc: 5),
+      throwsA(
+        isA<WalletFailure>()
+            .having(
+              (failure) => failure.kind,
+              'kind',
+              WalletFailureKind.needsNetworkFee,
+            )
+            .having(
+              (failure) => failure.message,
+              'message',
+              contains('Add test ETH'),
+            ),
+      ),
+    );
+  });
 }
 
 class _ReadOnlyWallets implements WalletLocalDataSource {
@@ -76,4 +128,9 @@ class _ReadOnlyWallets implements WalletLocalDataSource {
 
   @override
   Future<String> readPrivateKey(String userId) => throw UnimplementedError();
+}
+
+class _WalletsWithKey extends _ReadOnlyWallets {
+  @override
+  Future<String> readPrivateKey(String userId) async => '1'.padLeft(64, '0');
 }

@@ -3,14 +3,21 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tickerless/app.dart';
+import 'package:tickerless/core/error/failures.dart';
 import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
+import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 
 import 'support/fake_dependencies.dart';
 
 void main() {
-  Future<void> pumpApp(WidgetTester tester) async {
-    await tester.pumpWidget(TickerlessApp(dependencies: fakeDependencies()));
+  Future<void> pumpApp(
+    WidgetTester tester, {
+    ChainGateway? chainGateway,
+  }) async {
+    await tester.pumpWidget(
+      TickerlessApp(dependencies: fakeDependencies(chainGateway: chainGateway)),
+    );
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 1700));
     await tester.pump();
@@ -24,8 +31,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> signIn(WidgetTester tester) async {
-    await pumpApp(tester);
+  Future<void> signIn(WidgetTester tester, {ChainGateway? chainGateway}) async {
+    await pumpApp(tester, chainGateway: chainGateway);
     await tester.tap(find.text('Continue with email'));
     await tester.pumpAndSettle();
 
@@ -231,6 +238,42 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('You now own\nMeta Platforms.'), findsOneWidget);
     expect(find.text('on Base Sepolia'), findsOneWidget);
+  });
+
+  testWidgets('purchase failures use a friendly actionable snackbar', (
+    tester,
+  ) async {
+    await signIn(
+      tester,
+      chainGateway: FakeChainGateway(
+        purchaseFailure: const WalletFailure(
+          'You need Base Sepolia ETH to pay the network fee. Add test ETH to your wallet and try again.',
+          kind: WalletFailureKind.needsNetworkFee,
+        ),
+      ),
+    );
+
+    await tester.tap(find.byTooltip('Search'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byType(TextField), 'META');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('View Company →'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Own Meta Platforms'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Buy with USDC'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text(
+        'You need Base Sepolia ETH to pay the network fee. Add test ETH to your wallet and try again.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Open wallet'), findsOneWidget);
+    expect(find.textContaining('RPCError'), findsNothing);
+    expect(find.textContaining('-32000'), findsNothing);
   });
 
   for (final asset in const [

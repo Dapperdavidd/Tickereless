@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
+import 'package:tickerless/core/error/failures.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
 import 'package:tickerless/core/widgets/flow_scaffold.dart';
 import 'package:tickerless/core/widgets/hairline_list.dart';
@@ -27,15 +28,11 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
 
   double _amount = 5;
   bool _buying = false;
-  String? _error;
 
   Future<void> _buy() async {
     final session = context.read<AuthBloc>().state.session;
     if (session == null) return;
-    setState(() {
-      _buying = true;
-      _error = null;
-    });
+    setState(() => _buying = true);
     try {
       final result = await context.read<ChainGateway>().buy(
         userId: session.userId,
@@ -62,7 +59,31 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
         ),
       );
     } catch (error) {
-      if (mounted) setState(() => _error = error.toString());
+      if (!mounted) return;
+      final failure = error is WalletFailure
+          ? error
+          : const WalletFailure(
+              'We couldn’t complete this purchase. Try again in a moment.',
+            );
+      final needsWallet =
+          failure.kind == WalletFailureKind.needsNetworkFee ||
+          failure.kind == WalletFailureKind.insufficientBalance;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 6),
+            content: Text(failure.message),
+            action: needsWallet
+                ? SnackBarAction(
+                    label: 'Open wallet',
+                    onPressed: () => context.go(AppRoutes.activity),
+                  )
+                : null,
+          ),
+        );
     } finally {
       if (mounted) setState(() => _buying = false);
     }
@@ -228,10 +249,6 @@ class _PurchaseScreenState extends State<PurchaseScreen> {
             ],
           ),
           const SizedBox(height: 24),
-          if (_error != null) ...[
-            Text(_error!, style: const TextStyle(color: AppColors.red)),
-            const SizedBox(height: 12),
-          ],
           FilledButton(
             onPressed: _buying ? null : _buy,
             child: Text(_buying ? 'Confirming on Base…' : 'Buy with USDC'),

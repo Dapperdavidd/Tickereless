@@ -1,4 +1,5 @@
 import 'package:tickerless/core/di/dependencies.dart';
+import 'package:tickerless/core/error/failures.dart';
 import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
 import 'package:tickerless/features/discovery/domain/entities/company_match.dart';
@@ -17,15 +18,20 @@ import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
 AppDependencies fakeDependencies({
   AuthRepository? auth,
   DiscoveryRepository? discovery,
+  ChainGateway? chainGateway,
 }) => AppDependencies(
   authRepository: auth ?? FakeAuthRepository(),
   walletRepository: FakeWalletRepository(),
   discoveryRepository: discovery ?? FakeDiscoveryRepository(),
   newsRepository: FakeNewsRepository(),
-  chainGateway: FakeChainGateway(),
+  chainGateway: chainGateway ?? FakeChainGateway(),
 );
 
 class FakeChainGateway implements ChainGateway {
+  FakeChainGateway({this.purchaseFailure});
+
+  final WalletFailure? purchaseFailure;
+
   @override
   Future<OnChainSnapshot> snapshot(String walletAddress) async =>
       const OnChainSnapshot(usdc: 15, eth: .0003, positions: []);
@@ -35,8 +41,10 @@ class FakeChainGateway implements ChainGateway {
     required String userId,
     required Company company,
     required double usdc,
-  }) async =>
-      PurchaseResult(hash: '0x${'1' * 64}', tokens: usdc / company.price);
+  }) async {
+    if (purchaseFailure case final failure?) throw failure;
+    return PurchaseResult(hash: '0x${'1' * 64}', tokens: usdc / company.price);
+  }
 
   @override
   Future<SaleResult> sell({
