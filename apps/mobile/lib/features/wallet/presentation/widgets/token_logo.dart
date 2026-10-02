@@ -11,7 +11,7 @@ class TokenLogo extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final normalized = symbol.toUpperCase();
-    if (normalized != 'USDC' && normalized != 'ETH') {
+    if (normalized != 'USDC' && normalized != 'SOL') {
       return CircleAvatar(
         radius: size / 2,
         child: Text(

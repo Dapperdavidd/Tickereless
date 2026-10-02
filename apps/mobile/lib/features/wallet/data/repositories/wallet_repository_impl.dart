@@ -14,7 +14,9 @@ class WalletRepositoryImpl implements WalletRepository {
   Future<WalletIdentity> ensureWallet(String userId) async {
     try {
       final privateKey = await _localDataSource.ensurePrivateKey(userId);
-      return WalletIdentity(address: _localDataSource.addressOf(privateKey));
+      return WalletIdentity(
+        address: await _localDataSource.addressOf(privateKey),
+      );
     } on LocalStorageException catch (error) {
       throw StorageFailure(error.message);
     } catch (error) {
@@ -25,7 +27,7 @@ class WalletRepositoryImpl implements WalletRepository {
   @override
   Future<String> revealPrivateKey(String userId) async {
     try {
-      return '0x${await _localDataSource.readPrivateKey(userId)}';
+      return await _localDataSource.readPrivateKey(userId);
     } on MissingWalletException catch (error) {
       throw WalletFailure(error.message);
     } on LocalStorageException catch (error) {

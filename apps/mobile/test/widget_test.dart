@@ -6,7 +6,7 @@ import 'package:tickerless/app.dart';
 import 'package:tickerless/core/error/failures.dart';
 import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
-import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
+import 'package:tickerless/features/wallet/data/chain_gateway.dart';
 
 import 'support/fake_dependencies.dart';
 

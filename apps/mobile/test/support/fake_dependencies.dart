@@ -10,7 +10,7 @@ import 'package:tickerless/features/market/domain/entities/news_article.dart';
 import 'package:tickerless/features/market/domain/repositories/news_repository.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
 import 'package:tickerless/features/wallet/domain/repositories/wallet_repository.dart';
-import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
+import 'package:tickerless/features/wallet/data/chain_gateway.dart';
 
 /// Dependencies with nothing behind them that touches a network, a Keychain,
 /// or a platform channel — the portfolio keeps its real in-memory source,
@@ -34,7 +34,7 @@ class FakeChainGateway implements ChainGateway {
 
   @override
   Future<OnChainSnapshot> snapshot(String walletAddress) async =>
-      const OnChainSnapshot(usdc: 15, eth: .0003, positions: []);
+      const OnChainSnapshot(usdc: 15, networkBalance: .0003, positions: []);
 
   @override
   Future<PurchaseResult> buy({
@@ -54,7 +54,7 @@ class FakeChainGateway implements ChainGateway {
   }) async => SaleResult(hash: '0x${'2' * 64}', usdc: tokens * company.price);
 
   @override
-  Future<TransferResult> sendEth({
+  Future<TransferResult> sendNative({
     required String userId,
     required String recipient,
     required double amount,

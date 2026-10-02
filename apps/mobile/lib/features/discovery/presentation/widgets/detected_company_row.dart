@@ -44,7 +44,7 @@ class DetectedCompanyRow extends StatelessWidget {
               ),
               const SizedBox(height: 2),
               Text(
-                '${match.company.symbol} · Base Sepolia',
+                '${match.company.symbol} · Solana',
                 style: const TextStyle(color: AppColors.blue, fontSize: 11.5),
               ),
             ],

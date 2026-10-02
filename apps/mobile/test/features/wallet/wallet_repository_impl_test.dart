@@ -10,20 +10,17 @@ void main() {
         localDataSource: WalletLocalDataSourceImpl(store: store),
       );
 
-  test('creates one stable Ethereum wallet per account', () async {
+  test('creates one stable Solana wallet per account', () async {
     final repository = repositoryWith(_MemorySecretStore());
 
     final first = await repository.ensureWallet('owner-one');
     final second = await repository.ensureWallet('owner-one');
     final other = await repository.ensureWallet('owner-two');
 
-    expect(first.address, matches(RegExp(r'^0x[0-9a-fA-F]{40}$')));
+    expect(first.address, matches(RegExp(r'^[1-9A-HJ-NP-Za-km-z]{32,44}$')));
     expect(second.address, first.address);
     expect(other.address, isNot(first.address));
-    expect(
-      await repository.revealPrivateKey('owner-one'),
-      matches(RegExp(r'^0x[0-9a-f]{64}$')),
-    );
+    expect(await repository.revealPrivateKey('owner-one'), isNotEmpty);
   });
 
   test('does not invent a private key during reveal', () async {
@@ -39,7 +36,10 @@ void main() {
     final wallet = await repositoryWith(_MemorySecretStore()).ensureWallet('x');
 
     expect(wallet.shortAddress, startsWith(wallet.address.substring(0, 6)));
-    expect(wallet.shortAddress, endsWith(wallet.address.substring(38)));
+    expect(
+      wallet.shortAddress,
+      endsWith(wallet.address.substring(wallet.address.length - 4)),
+    );
   });
 }
 

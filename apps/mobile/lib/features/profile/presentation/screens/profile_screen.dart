@@ -200,7 +200,7 @@ class _AccountProfileState extends State<_AccountProfile> {
               onTap: () => _info(
                 context,
                 'Help & Support',
-                'Tickerless currently runs on Base Sepolia. For account or wallet help, never share your private key. Support channels will be added before public release.',
+                'Tickerless currently uses Solana Devnet while real tokenized-equity execution is integrated. Never share your private key.',
               ),
             ),
             SettingTile(
@@ -209,7 +209,7 @@ class _AccountProfileState extends State<_AccountProfile> {
               onTap: () => _info(
                 context,
                 'About Tickerless',
-                'Point at the world. Search it. Own a piece of it.\n\nTickerless connects products, companies, live company news, and test tokenized equities settled with testnet USDC on Base Sepolia.',
+                'Point at the world. Search it. Own a piece of it.\n\nTickerless connects products, companies, live company news, and verified tokenized-equity instruments on Solana.',
               ),
             ),
           ],
@@ -221,7 +221,7 @@ class _AccountProfileState extends State<_AccountProfile> {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'Base Sepolia · Live testnet',
+                'Solana Devnet · Infrastructure migration',
                 style: TextStyle(color: AppColors.muted, fontSize: 13),
               ),
             ),

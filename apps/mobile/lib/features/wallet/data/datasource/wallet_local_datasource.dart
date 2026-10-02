@@ -1,15 +1,15 @@
-import 'dart:math';
+import 'dart:convert';
 
+import 'package:solana/solana.dart';
 import 'package:tickerless/core/error/exceptions.dart';
 import 'package:tickerless/features/wallet/data/datasource/wallet_secret_store.dart';
-import 'package:web3dart/web3dart.dart';
 
 /// Owns key generation and derivation. The only code in the app that handles
 /// raw private key material.
 abstract interface class WalletLocalDataSource {
   Future<String> ensurePrivateKey(String userId);
   Future<String> readPrivateKey(String userId);
-  String addressOf(String privateKey);
+  Future<String> addressOf(String privateKey);
 }
 
 class WalletLocalDataSourceImpl implements WalletLocalDataSource {
@@ -24,10 +24,8 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
     final existing = await _store.read(keyName);
     if (existing != null) return existing;
 
-    final credentials = EthPrivateKey.createRandom(Random.secure());
-    final privateKey = credentials.privateKeyInt
-        .toRadixString(16)
-        .padLeft(64, '0');
+    final credentials = await Ed25519HDKeyPair.random();
+    final privateKey = base64Encode((await credentials.extract()).bytes);
     await _store.write(keyName, privateKey);
     return privateKey;
   }
@@ -44,8 +42,13 @@ class WalletLocalDataSourceImpl implements WalletLocalDataSource {
   }
 
   @override
-  String addressOf(String privateKey) =>
-      EthPrivateKey.fromHex(privateKey).address.with0x;
+  Future<String> addressOf(String privateKey) async =>
+      (await keyPairOf(privateKey)).address;
 
-  String _keyName(String userId) => 'tickerless_wallet_$userId';
+  Future<Ed25519HDKeyPair> keyPairOf(String privateKey) =>
+      Ed25519HDKeyPair.fromPrivateKeyBytes(
+        privateKey: base64Decode(privateKey),
+      );
+
+  String _keyName(String userId) => 'tickerless_solana_wallet_$userId';
 }

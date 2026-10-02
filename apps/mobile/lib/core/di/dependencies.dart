@@ -29,8 +29,9 @@ import 'package:tickerless/features/portfolio/domain/repositories/portfolio_repo
 import 'package:tickerless/features/portfolio/domain/usecases/get_positions.dart';
 import 'package:tickerless/features/portfolio/domain/usecases/record_purchase.dart';
 import 'package:tickerless/features/wallet/data/datasource/wallet_local_datasource.dart';
-import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
+import 'package:tickerless/features/wallet/data/chain_gateway.dart';
 import 'package:tickerless/features/wallet/data/repositories/wallet_repository_impl.dart';
+import 'package:tickerless/features/wallet/data/solana_devnet_gateway.dart';
 import 'package:tickerless/features/wallet/domain/repositories/wallet_repository.dart';
 import 'package:tickerless/features/wallet/domain/usecases/ensure_wallet.dart';
 import 'package:tickerless/features/wallet/domain/usecases/reveal_private_key.dart';
@@ -80,7 +81,7 @@ class AppDependencies {
          newsRepository: newsRepository ?? OfficialNewsRepository(),
          chainGateway:
              chainGateway ??
-             BaseSepoliaGateway(wallets: WalletLocalDataSourceImpl()),
+             SolanaDevnetGateway(wallets: WalletLocalDataSourceImpl()),
        );
 
   AppDependencies._resolved({

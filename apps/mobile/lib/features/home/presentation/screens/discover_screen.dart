@@ -138,7 +138,7 @@ class _DemoFootnote extends StatelessWidget {
       Icon(Icons.check_circle, color: AppColors.blue, size: 13),
       SizedBox(width: 6),
       Text(
-        'Base Sepolia · Live testnet',
+        'Solana · Equity access in progress',
         style: TextStyle(color: AppColors.muted, fontSize: 11),
       ),
     ],

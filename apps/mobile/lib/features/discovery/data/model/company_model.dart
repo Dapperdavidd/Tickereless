@@ -11,7 +11,7 @@ class CompanyModel extends Company {
     required super.change,
   });
 
-  /// `json` is the resolver's `company` object; `asset` is the Base Sepolia
+  /// `json` is the resolver's `company` object; `asset` is the network
   /// listing, which the backend nests either alongside or inside it.
   factory CompanyModel.fromJson(
     Map<String, dynamic> json, {

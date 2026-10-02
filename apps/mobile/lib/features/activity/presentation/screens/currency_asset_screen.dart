@@ -15,7 +15,7 @@ class CurrencyAssetScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isUsdc = args.symbol == 'USDC';
-    final name = isUsdc ? 'USD Coin' : 'Base Sepolia ETH';
+    final name = isUsdc ? 'USD Coin' : 'Solana';
     final color = isUsdc ? const Color(0xFF2775CA) : const Color(0xFF235BFF);
     final usdcReference = PriceSeries(
       range: ChartRange.day,
@@ -32,7 +32,7 @@ class CurrencyAssetScreen extends StatelessWidget {
           Text(
             isUsdc
                 ? '\$${args.balance.toStringAsFixed(2)}'
-                : '${args.balance.toStringAsFixed(6)} ETH',
+                : '${args.balance.toStringAsFixed(6)} SOL',
             style: const TextStyle(
               fontSize: 42,
               fontWeight: FontWeight.w600,
@@ -41,7 +41,7 @@ class CurrencyAssetScreen extends StatelessWidget {
           ),
           const SizedBox(height: 5),
           Text(
-            '$name · Base Sepolia',
+            '$name · Solana Devnet',
             style: const TextStyle(color: AppColors.muted),
           ),
           const SizedBox(height: 22),
@@ -80,7 +80,7 @@ class CurrencyAssetScreen extends StatelessWidget {
           const SizedBox(height: 16),
           const Text('Network', style: TextStyle(color: AppColors.muted)),
           const SizedBox(height: 5),
-          const Text('Base Sepolia testnet'),
+          const Text('Solana Devnet'),
           const SizedBox(height: 16),
           const Text('Purpose', style: TextStyle(color: AppColors.muted)),
           const SizedBox(height: 5),
@@ -98,7 +98,7 @@ class _LiveChartUnavailable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Semantics(
-    label: 'Live Base Sepolia ETH chart unavailable',
+    label: 'Live SOL price history unavailable',
     child: Container(
       height: 210,
       margin: const EdgeInsets.only(bottom: 8),
@@ -122,7 +122,7 @@ class _LiveChartUnavailable extends StatelessWidget {
               ),
               SizedBox(height: 5),
               Text(
-                'Connect a verified ETH price-history feed to display real movement.',
+                'Connect a verified SOL price-history feed to display real movement.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.muted, fontSize: 12),
               ),

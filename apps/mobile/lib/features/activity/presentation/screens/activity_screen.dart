@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:solana/solana.dart';
 import 'package:tickerless/core/router/app_router.dart';
 import 'package:tickerless/core/router/route_args.dart';
 import 'package:tickerless/core/theme/app_theme.dart';
@@ -20,9 +21,8 @@ import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_event.
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_state.dart';
 import 'package:tickerless/features/profile/presentation/widgets/current_profile_avatar.dart';
 import 'package:tickerless/features/wallet/domain/entities/wallet_identity.dart';
-import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
+import 'package:tickerless/features/wallet/data/chain_gateway.dart';
 import 'package:tickerless/features/wallet/presentation/widgets/token_logo.dart';
-import 'package:wallet/wallet.dart';
 
 /// Wallet identity, owned assets, and the transactions that produced them.
 /// The historical route stays `/activity` so existing deep links keep working.
@@ -355,7 +355,10 @@ class _WalletBody extends StatelessWidget {
                 gap: 22,
                 children: [
                   _UsdcRow(balance: chain!.usdc, balanceHidden: balancesHidden),
-                  _EthRow(balance: chain!.eth, balanceHidden: balancesHidden),
+                  _SolRow(
+                    balance: chain!.networkBalance,
+                    balanceHidden: balancesHidden,
+                  ),
                   for (final position in positions)
                     _AssetRow(
                       position: position,
@@ -365,7 +368,7 @@ class _WalletBody extends StatelessWidget {
               )
             else if (chainError)
               const Text(
-                'Base Sepolia balances are temporarily unavailable.',
+                'Solana Devnet balances are temporarily unavailable.',
                 style: TextStyle(color: AppColors.muted),
               )
             else
@@ -407,12 +410,12 @@ class _WalletBody extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
-                'Receive on Base Sepolia',
+                'Receive on Solana Devnet',
                 style: TextStyle(fontSize: 23, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Only send Base Sepolia ETH or USDC to this address.',
+                'Only send Solana Devnet SOL or USDC to this address.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.muted),
               ),
@@ -474,7 +477,7 @@ class _WalletBody extends StatelessWidget {
       return chain == null ? 'Unavailable · Retry' : 'Offline · Retry';
     }
     final synced = lastSynced;
-    if (synced == null) return 'Base Sepolia';
+    if (synced == null) return 'Solana Devnet';
     final elapsed = DateTime.now().difference(synced);
     if (elapsed.inMinutes < 1) return 'Live · now';
     return 'Live · ${elapsed.inMinutes}m ago';
@@ -505,7 +508,7 @@ class _UsdcRow extends StatelessWidget {
               children: [
                 Text('USD Coin', style: TextStyle(fontWeight: FontWeight.w700)),
                 Text(
-                  'USDC · Base Sepolia',
+                  'USDC · Solana Devnet',
                   style: TextStyle(color: AppColors.muted, fontSize: 12),
                 ),
               ],
@@ -565,8 +568,8 @@ class _AddressPill extends StatelessWidget {
   );
 }
 
-class _EthRow extends StatelessWidget {
-  const _EthRow({required this.balance, required this.balanceHidden});
+class _SolRow extends StatelessWidget {
+  const _SolRow({required this.balance, required this.balanceHidden});
   final double balance;
   final bool balanceHidden;
   @override
@@ -574,20 +577,20 @@ class _EthRow extends StatelessWidget {
     borderRadius: BorderRadius.circular(14),
     onTap: () => context.push(
       AppRoutes.currencyAsset,
-      extra: CurrencyAssetArgs(symbol: 'ETH', balance: balance),
+      extra: CurrencyAssetArgs(symbol: 'SOL', balance: balance),
     ),
     child: Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          const TokenLogo(symbol: 'ETH', size: 42),
+          const TokenLogo(symbol: 'SOL', size: 42),
           const SizedBox(width: 13),
           const Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Base Sepolia ETH',
+                  'Solana Devnet SOL',
                   style: TextStyle(fontWeight: FontWeight.w700),
                 ),
                 Text(
@@ -677,20 +680,20 @@ class _SendSheetState extends State<_SendSheet> {
       return;
     }
     try {
-      EthereumAddress.fromHex(recipient);
+      Ed25519HDPublicKey.fromBase58(recipient);
     } catch (_) {
-      setState(() => _error = 'Enter a valid 0x wallet address.');
+      setState(() => _error = 'Enter a valid Solana wallet address.');
       return;
     }
     final available = _asset == 'USDC'
         ? widget.balance.usdc
-        : widget.balance.eth;
+        : widget.balance.networkBalance;
     if (amount > available) {
       setState(() => _error = 'Your available $_asset balance is too low.');
       return;
     }
-    if (_asset == 'ETH' && amount >= available) {
-      setState(() => _error = 'Leave some ETH behind for the network fee.');
+    if (_asset == 'SOL' && amount >= available) {
+      setState(() => _error = 'Leave some SOL behind for the network fee.');
       return;
     }
     FocusManager.instance.primaryFocus?.unfocus();
@@ -717,7 +720,7 @@ class _SendSheetState extends State<_SendSheet> {
           amount: amount,
         );
       } else {
-        await widget.gateway.sendEth(
+        await widget.gateway.sendNative(
           userId: session.userId,
           recipient: recipient,
           amount: amount,
@@ -727,7 +730,7 @@ class _SendSheetState extends State<_SendSheet> {
       final messenger = ScaffoldMessenger.of(context);
       Navigator.pop(context, true);
       messenger.showSnackBar(
-        SnackBar(content: Text('$amount $_asset sent on Base Sepolia.')),
+        SnackBar(content: Text('$amount $_asset sent on Solana Devnet.')),
       );
     } catch (error) {
       if (!mounted) return;
@@ -743,7 +746,7 @@ class _SendSheetState extends State<_SendSheet> {
     final bottom = MediaQuery.viewInsetsOf(context).bottom;
     final available = _asset == 'USDC'
         ? '\$${widget.balance.usdc.toStringAsFixed(2)}'
-        : '${widget.balance.eth.toStringAsFixed(6)} ETH';
+        : '${widget.balance.networkBalance.toStringAsFixed(6)} SOL';
     return SafeArea(
       child: Padding(
         padding: EdgeInsets.fromLTRB(24, 8, 24, 24 + bottom),
@@ -759,7 +762,7 @@ class _SendSheetState extends State<_SendSheet> {
             SegmentedButton<String>(
               segments: const [
                 ButtonSegment(value: 'USDC', label: Text('USDC')),
-                ButtonSegment(value: 'ETH', label: Text('Base Sepolia ETH')),
+                ButtonSegment(value: 'SOL', label: Text('Solana Devnet SOL')),
               ],
               selected: {_asset},
               onSelectionChanged: (value) =>
@@ -795,7 +798,7 @@ class _SendSheetState extends State<_SendSheet> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Testnet assets have no monetary value. Network fees use Base Sepolia ETH.',
+              'Devnet balances have no monetary value. Network fees use SOL.',
               style: TextStyle(color: AppColors.muted, fontSize: 11),
             ),
           ],
@@ -845,7 +848,7 @@ class _TransferReviewSheet extends StatelessWidget {
             value: '${_formatAmount(amount)} $asset',
           ),
           const Divider(height: 26, color: AppColors.border),
-          _ReviewRow(label: 'Network', value: 'Base Sepolia'),
+          _ReviewRow(label: 'Network', value: 'Solana Devnet'),
           const Divider(height: 26, color: AppColors.border),
           const _ReviewRow(
             label: 'Network fee',

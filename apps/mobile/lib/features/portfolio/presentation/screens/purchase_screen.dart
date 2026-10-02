@@ -11,7 +11,7 @@ import 'package:tickerless/core/widgets/summary_row.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_bloc.dart';
 import 'package:tickerless/features/portfolio/presentation/bloc/portfolio_event.dart';
 import 'package:tickerless/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
+import 'package:tickerless/features/wallet/data/chain_gateway.dart';
 
 /// Choose an amount and turn a discovery into a position.
 class PurchaseScreen extends StatefulWidget {

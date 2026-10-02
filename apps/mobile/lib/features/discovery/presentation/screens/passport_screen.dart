@@ -22,7 +22,7 @@ import 'package:tickerless/features/market/presentation/widgets/price_chart.dart
 import 'package:tickerless/features/market/presentation/widgets/range_selector.dart';
 import 'package:tickerless/features/market/presentation/widgets/stat_strip.dart';
 import 'package:tickerless/features/portfolio/domain/entities/owned_position.dart';
-import 'package:tickerless/features/wallet/data/base_sepolia_gateway.dart';
+import 'package:tickerless/features/wallet/data/chain_gateway.dart';
 
 /// Everything known about one company, and the way to own a piece of it.
 ///
@@ -68,7 +68,9 @@ class _PassportView extends StatelessWidget {
   }
 
   void _showDetails(BuildContext context) {
-    final supported = ChainConfig.assets.containsKey(args.company.ticker);
+    final supported = ChainConfig.executableTickers.contains(
+      args.company.ticker,
+    );
     showModalBottomSheet<void>(
       context: context,
       showDragHandle: true,
@@ -95,8 +97,8 @@ class _PassportView extends StatelessWidget {
                 icon: Icons.account_balance_wallet_outlined,
                 title: 'Ownership',
                 detail: supported
-                    ? 'Available as a test token on Base Sepolia.'
-                    : 'News and discovery only; no test token is deployed.',
+                    ? 'Available through a verified Solana instrument.'
+                    : 'Discovery only while verified Solana execution is integrated.',
               ),
               const SizedBox(height: 17),
               _DisclosureRow(
@@ -106,7 +108,7 @@ class _PassportView extends StatelessWidget {
               ),
               const SizedBox(height: 18),
               const Text(
-                'Tickerless test assets have no monetary value and are not shares in the underlying company.',
+                'Tickerless will only enable ownership for verified, issuer-backed instruments.',
                 style: TextStyle(color: AppColors.muted, fontSize: 11.5),
               ),
             ],
@@ -559,7 +561,9 @@ class _OwnBarState extends State<_OwnBar> {
 
   @override
   Widget build(BuildContext context) {
-    final supported = ChainConfig.assets.containsKey(widget.company.ticker);
+    final supported = ChainConfig.executableTickers.contains(
+      widget.company.ticker,
+    );
     return DecoratedBox(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
@@ -595,7 +599,7 @@ class _OwnBarState extends State<_OwnBar> {
                               ? widget.position == null
                                     ? 'Own ${widget.company.name}'
                                     : 'Buy more ${widget.company.name}'
-                              : 'News only on testnet',
+                              : 'Solana access coming soon',
                         ),
                       ),
                     ),
@@ -604,7 +608,7 @@ class _OwnBarState extends State<_OwnBar> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Transactions use testnet USDC and have no monetary value.',
+                'Ownership remains disabled until real Solana instruments are verified.',
                 style: TextStyle(color: AppColors.muted, fontSize: 11),
               ),
             ],
