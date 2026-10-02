@@ -218,8 +218,8 @@ pub async fn load_catalog(pool: &PgPool) -> Result<CompanyCatalog, sqlx::Error> 
          a.environment, a.contract_address, a.market_address, a.price_usdc, \
          a.payment_token_address, a.chain_id, a.explorer_url \
          FROM companies c LEFT JOIN tokenized_assets a \
-         ON a.company_id = c.id AND a.active = true AND a.network = 'Base Sepolia' \
-         AND a.environment = 'demo' ORDER BY c.name",
+         ON a.company_id = c.id AND a.active = true AND a.network = 'Solana' \
+         AND a.environment = 'mainnet' ORDER BY c.name",
     )
     .fetch_all(pool)
     .await?;
@@ -387,7 +387,7 @@ pub async fn record_transaction(
     let company = sqlx::query_as::<_, (uuid::Uuid, String, String, uuid::Uuid, String, String)>(
         "SELECT c.id, c.name, c.ticker, a.id, a.symbol, a.network FROM companies c \
          JOIN tokenized_assets a ON a.company_id = c.id AND a.active = true \
-         WHERE c.slug = $1 AND a.network = 'Base Sepolia' AND a.environment = 'demo'",
+         WHERE c.slug = $1 AND a.network = 'Solana' AND a.environment = 'mainnet'",
     )
     .bind(&input.company_slug)
     .fetch_one(&mut *transaction)
@@ -552,7 +552,7 @@ mod tests {
         models::{CreateDiscoveryRequest, DiscoveryMethod, SubmitTransactionRequest},
     };
 
-    const WALLET: &str = "0x0000000000000000000000000000000000000001";
+    const WALLET: &str = "11111111111111111111111111111111";
 
     #[sqlx::test(migrator = "MIGRATOR")]
     async fn migrations_seed_the_resolvable_catalog(pool: PgPool) {
@@ -563,7 +563,7 @@ mod tests {
         assert_eq!(meta.ticker, "META");
         assert_eq!(
             meta.asset.as_ref().map(|asset| asset.symbol.as_str()),
-            Some("tMETAc")
+            Some("METAx")
         );
         let microsoft = catalog
             .find_by_slug("microsoft")
@@ -573,8 +573,8 @@ mod tests {
             microsoft
                 .asset
                 .as_ref()
-                .map(|asset| (asset.symbol.as_str(), asset.contract_address.as_ref())),
-            Some(("tMSFTc", None))
+                .map(|asset| (asset.symbol.as_str(), asset.contract_address.as_deref())),
+            Some(("MSFTx", Some("XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX")))
         );
     }
 

@@ -8,6 +8,7 @@ pub mod google;
 mod lens;
 mod link;
 mod models;
+pub mod xstocks;
 
 use actix_web::{HttpRequest, HttpResponse, Responder, error, error::JsonPayloadError, web};
 use catalog::CompanyCatalog;
@@ -238,6 +239,7 @@ pub struct AppState {
     catalog: CompanyCatalog,
     pool: PgPool,
     chain: chain::ChainClient,
+    xstocks: xstocks::XStocksClient,
     google: Option<google::GoogleVerifier>,
 }
 
@@ -247,6 +249,7 @@ impl AppState {
             catalog,
             pool,
             chain,
+            xstocks: xstocks::XStocksClient::production(),
             google: None,
         }
     }
@@ -369,22 +372,29 @@ async fn ownership_quote(
             "company does not have a supported tokenized asset",
         ));
     };
+    let price = match state.xstocks.price(&asset.symbol).await {
+        Ok(price) => price,
+        Err(_) => {
+            tracing::warn!(
+                symbol = asset.symbol,
+                "issuer price unavailable; using cached price"
+            );
+            asset.price_usdc
+        }
+    };
     let quote = OwnershipQuote {
         company_slug: &company.slug,
         company_name: &company.name,
         asset_symbol: &asset.symbol,
         network: &asset.network,
         amount_usdc: amount,
-        estimated_token_amount: (amount / asset.price_usdc).round_dp(18),
+        estimated_token_amount: (amount / price).round_dp(8),
         contract_address: asset.contract_address.as_deref(),
         market_address: asset.market_address.as_deref(),
         payment_token_address: asset.payment_token_address.as_deref(),
         chain_id: asset.chain_id,
         explorer_url: asset.explorer_url.as_deref(),
-        executable: asset.contract_address.is_some()
-            && asset.market_address.is_some()
-            && asset.payment_token_address.is_some()
-            && asset.chain_id.is_some(),
+        executable: false,
     };
     HttpResponse::Ok().json(quote)
 }
