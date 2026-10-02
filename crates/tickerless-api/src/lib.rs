@@ -433,11 +433,11 @@ async fn discovery_history(
     state: web::Data<AppState>,
     query: web::Query<DiscoveryHistoryQuery>,
 ) -> impl Responder {
-    let wallet = query.wallet_address.trim().to_ascii_lowercase();
+    let wallet = query.wallet_address.trim().to_owned();
     if !valid_wallet(&wallet) {
         return HttpResponse::BadRequest().json(ApiError::new(
             "invalid_wallet",
-            "wallet_address must be a 20-byte hexadecimal address",
+            "wallet_address must be a valid Solana public key",
         ));
     }
     let limit = query.limit.unwrap_or(50).clamp(1, 100);
@@ -458,13 +458,13 @@ async fn submit_transaction(
     body: web::Json<SubmitTransactionRequest>,
 ) -> impl Responder {
     let mut input = body.into_inner();
-    input.wallet_address = input.wallet_address.trim().to_ascii_lowercase();
+    input.wallet_address = input.wallet_address.trim().to_owned();
     input.company_slug = input.company_slug.trim().to_ascii_lowercase();
-    input.tx_hash = input.tx_hash.trim().to_ascii_lowercase();
+    input.tx_hash = input.tx_hash.trim().to_owned();
     if !valid_wallet(&input.wallet_address) {
         return HttpResponse::BadRequest().json(ApiError::new(
             "invalid_wallet",
-            "wallet_address must be a 20-byte hexadecimal address",
+            "wallet_address must be a valid Solana public key",
         ));
     }
     let Some(company) = state.catalog.find_by_slug(&input.company_slug) else {
@@ -479,6 +479,12 @@ async fn submit_transaction(
             "company does not have a supported tokenized asset",
         ));
     };
+    if asset.network == "Solana" {
+        return HttpResponse::ServiceUnavailable().json(ApiError::new(
+            "execution_unavailable",
+            "Solana transaction verification is not enabled yet",
+        ));
+    }
     let (Some(market), Some(contract), Some(chain_id)) = (
         asset.market_address.as_deref(),
         asset.contract_address.as_deref(),
@@ -557,11 +563,11 @@ async fn submit_transaction(
 }
 
 async fn get_world(state: web::Data<AppState>, query: web::Query<WorldQuery>) -> impl Responder {
-    let wallet = query.wallet_address.trim().to_ascii_lowercase();
+    let wallet = query.wallet_address.trim().to_owned();
     if !valid_wallet(&wallet) {
         return HttpResponse::BadRequest().json(ApiError::new(
             "invalid_wallet",
-            "wallet_address must be a 20-byte hexadecimal address",
+            "wallet_address must be a valid Solana public key",
         ));
     }
     match database::world(&state.pool, &wallet).await {
@@ -575,9 +581,9 @@ async fn get_world(state: web::Data<AppState>, query: web::Query<WorldQuery>) ->
 }
 
 fn valid_wallet(value: &str) -> bool {
-    value.len() == 42
-        && value.starts_with("0x")
-        && value[2..].bytes().all(|byte| byte.is_ascii_hexdigit())
+    bs58::decode(value)
+        .into_vec()
+        .is_ok_and(|decoded| decoded.len() == 32)
 }
 
 pub fn configure_app(config: &mut web::ServiceConfig) {
@@ -871,13 +877,12 @@ mod tests {
     }
 
     #[actix_web::test]
-    async fn validates_ethereum_wallet_shape() {
+    async fn validates_solana_wallet_shape() {
+        assert!(super::valid_wallet("11111111111111111111111111111111"));
         assert!(super::valid_wallet(
-            "0x0000000000000000000000000000000000000001"
+            "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp"
         ));
         assert!(!super::valid_wallet("0x1234"));
-        assert!(!super::valid_wallet(
-            "0xzz00000000000000000000000000000000000000"
-        ));
+        assert!(!super::valid_wallet("not-a-solana-address"));
     }
 }
