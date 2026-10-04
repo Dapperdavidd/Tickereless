@@ -328,44 +328,10 @@ pub async fn discovery_history(
          JOIN companies c ON c.id = d.company_id JOIN users u ON u.id = d.user_id \
          WHERE u.wallet_address = $1 ORDER BY d.created_at DESC LIMIT $2",
     )
-    .bind(wallet_address.to_ascii_lowercase())
+    .bind(wallet_address)
     .bind(limit)
     .fetch_all(pool)
     .await
-}
-
-pub struct DeploymentRegistration {
-    pub market_address: String,
-    pub payment_token_address: String,
-    pub chain_id: i64,
-    pub explorer_url: String,
-    pub assets: Vec<(String, String)>,
-}
-
-pub async fn register_deployment(
-    pool: &PgPool,
-    registration: &DeploymentRegistration,
-) -> Result<(), sqlx::Error> {
-    let mut transaction = pool.begin().await?;
-    for (symbol, contract_address) in &registration.assets {
-        let result = sqlx::query(
-            "UPDATE tokenized_assets SET contract_address = $1, market_address = $2, \
-             payment_token_address = $3, chain_id = $4, explorer_url = $5 \
-             WHERE symbol = $6 AND network = 'Base Sepolia' AND environment = 'demo'",
-        )
-        .bind(contract_address)
-        .bind(&registration.market_address)
-        .bind(&registration.payment_token_address)
-        .bind(registration.chain_id)
-        .bind(&registration.explorer_url)
-        .bind(symbol)
-        .execute(&mut *transaction)
-        .await?;
-        if result.rows_affected() != 1 {
-            return Err(sqlx::Error::RowNotFound);
-        }
-    }
-    transaction.commit().await
 }
 
 #[derive(Debug)]
@@ -494,7 +460,7 @@ pub async fn world(pool: &PgPool, wallet_address: &str) -> Result<WorldSummary, 
          WHERE u.wallet_address = $1 AND t.status = 'confirmed' \
          GROUP BY c.slug, c.name, c.ticker, a.symbol ORDER BY SUM(t.amount_usdc) DESC",
     )
-    .bind(wallet_address.to_ascii_lowercase())
+    .bind(wallet_address)
     .fetch_all(pool)
     .await?;
     let contexts = sqlx::query_as::<_, (String, String, String)>(
@@ -502,7 +468,7 @@ pub async fn world(pool: &PgPool, wallet_address: &str) -> Result<WorldSummary, 
          JOIN users u ON u.id = d.user_id JOIN companies c ON c.id = d.company_id \
          WHERE u.wallet_address = $1 ORDER BY d.created_at DESC",
     )
-    .bind(wallet_address.to_ascii_lowercase())
+    .bind(wallet_address)
     .fetch_all(pool)
     .await?;
     let discovery_count = contexts.len();

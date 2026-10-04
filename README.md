@@ -1,7 +1,7 @@
 # Tickerless
 
-Tickerless turns real-world context into a path for discovering and interacting
-with tokenized equities on Base.
+Tickerless turns real-world context into a path for discovering tokenized
+equities on Solana.
 
 [![CI](https://github.com/Dapperdavidd/Tickereless/actions/workflows/ci.yml/badge.svg)](https://github.com/Dapperdavidd/Tickereless/actions/workflows/ci.yml)
 
@@ -10,22 +10,20 @@ with tokenized equities on Base.
 The product resolves three kinds of input through one company-resolution engine:
 
 ```text
-search / lens / link -> company -> equity -> tokenized asset -> Base
+search / lens / link -> company -> equity -> verified Solana instrument
 ```
 
-Development begins with the Rust API in `crates/tickerless-api`. The Flutter
-client lives in `apps/mobile`, and the demo Base contracts live in `contracts`.
+The Rust API lives in `crates/tickerless-api` and the Flutter client lives in
+`apps/mobile`. The old Base proof-of-concept contracts remain in `contracts`
+for historical reference; they are not part of the active product path.
 
 ## Run the mobile app
 
-The Flutter client targets iOS and Android. Its current onboarding buttons all
-enter the demo while authentication is intentionally deferred. Every ownership
-surface is labeled as Base Sepolia and uses demo assets.
-
-The frontend includes navigable Search, Lens, Link, Company Passport, purchase,
-confirmation, Your World, Discovery History, and Profile experiences. The
-screens currently use deterministic demo content while backend and wallet
-integration are added in later slices.
+The Flutter client targets iOS and Android. Email and Google authentication
+create a stable, locally secured Solana wallet; guest mode remains discovery
+only. Wallet transfers use Solana Devnet while real-equity execution remains
+disabled until a compliant mainnet route is integrated. The UI does not mint or
+pretend to purchase fake equity assets.
 
 ```shell
 cd apps/mobile
@@ -132,8 +130,9 @@ curl -X POST http://127.0.0.1:8080/v1/resolve/search \
   -d '{"query":"who owns Instagram?"}'
 ```
 
-The initial registry contains Apple, Meta Platforms, Alphabet, and NVIDIA. Only
-assets explicitly present in the registry are returned as actionable.
+The registry contains Apple, NVIDIA, Meta, Alphabet, Microsoft, Amazon, and
+Tesla. Each maps to a verified xStocks mint on Solana mainnet. Spotify remains
+discoverable but has no registered instrument.
 
 Resolve companies mentioned by a public page:
 
@@ -169,31 +168,31 @@ Request an exact-decimal ownership quote:
 curl 'http://127.0.0.1:8080/v1/companies/nvidia/quote?amount_usdc=9'
 ```
 
-Quotes expose the selected asset and estimated fractional token amount. An asset
-is only marked `actionable`/`executable` after both its token contract and market
-addresses have been registered; seeded symbols alone never imply deployability.
+Quotes use the issuer's public price endpoint and fall back to a cached price
+when it is unavailable. A verified mint may be returned as `actionable`, but
+quotes remain `executable: false` until the API has a supported swap route,
+transaction builder, and confirmation verifier.
 
-After the wallet broadcasts a market purchase, submit its transaction hash:
+The transaction endpoint is intentionally closed during the migration:
 
 ```shell
 curl -X POST http://127.0.0.1:8080/v1/transactions \
   -H 'content-type: application/json' \
   -d '{
-    "wallet_address":"0x0000000000000000000000000000000000000001",
+    "wallet_address":"XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
     "company_slug":"nvidia",
-    "tx_hash":"0x0000000000000000000000000000000000000000000000000000000000000000"
+    "tx_hash":"5VERIFIED_SOLANA_SIGNATURE"
   }'
 ```
 
-The API does not trust purchase amounts supplied by the client. It verifies the
-chain ID, sender, market, asset, receipt status, `buy` calldata, and `Purchased`
-event, then derives the USDC and token amounts from the confirmed transaction.
-Transaction hashes are recorded once only.
+It returns `execution_unavailable` rather than accepting an unverified purchase.
+The endpoint will reopen only when it can derive the wallet, mint, USDC amount,
+token amount, and confirmation status from a Solana transaction.
 
 Retrieve the wallet's personalized “Your World” view:
 
 ```shell
-curl 'http://127.0.0.1:8080/v1/world?wallet_address=0x0000000000000000000000000000000000000001'
+curl 'http://127.0.0.1:8080/v1/world?wallet_address=XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp'
 ```
 
 Only confirmed purchases contribute to ownership totals. Multiple purchases are
@@ -216,7 +215,7 @@ curl -X POST http://127.0.0.1:8080/v1/discoveries \
 Retrieve a wallet's discovery history:
 
 ```shell
-curl 'http://127.0.0.1:8080/v1/discoveries?wallet_address=0x0000000000000000000000000000000000000001'
+curl 'http://127.0.0.1:8080/v1/discoveries?wallet_address=XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp'
 ```
 
 New discoveries are anonymous. Supplying a discovery ID with a verified purchase
@@ -231,9 +230,9 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace --all-features
 ```
 
-## Demo contracts
+## Legacy Base proof of concept
 
-The Foundry project contains:
+The Foundry project contains the earlier hackathon proof of concept:
 
 - `DemoToken`, an owner-minted ERC-20-compatible token used for demo equities.
 - `DemoPaymentToken`, a test USDC token that gives each demo wallet one self-service allocation.
@@ -242,8 +241,9 @@ The Foundry project contains:
 - A deployment script that creates tUSDC, tAAPLc, tNVDAc, tMETAc, tGOOGLc, and tMSFTc, lists the
   five equities, and supplies market inventory.
 
-These contracts represent demo assets only; they are not real securities. Run the contract gates
-with:
+These contracts represent test assets only, are not real securities, and are no
+longer used by the API or mobile app. They are retained so the project history
+and contract tests remain reproducible. Run their checks with:
 
 ```shell
 forge fmt --check
@@ -252,29 +252,5 @@ forge test
 forge lint
 ```
 
-The current test deployment is live on Base Sepolia. Its public addresses and
-deployment transaction hashes are tracked in `deployments/base-sepolia.json`.
-The active market settles against Circle's official Base Sepolia USDC contract;
-wallets therefore need faucet-issued test USDC plus Base Sepolia ETH for gas.
-Both assets are testnet-only and have no monetary value.
-
-Deploy to a configured development RPC:
-
-```shell
-forge script contracts/script/Deploy.s.sol:DeployTickerless \
-  --rpc-url "$BASE_SEPOLIA_RPC_URL" \
-  --broadcast
-```
-
-After deployment, copy the returned addresses into the corresponding
-`TICKERLESS_*_ADDRESS` values in `.env`, then register the complete deployment
-atomically:
-
-```shell
-cargo run -p tickerless-api --bin register_deployment
-```
-
-The command validates every address, chain ID, and HTTPS explorer URL before
-updating all configured registry assets. `TICKERLESS_MSFT_TOKEN_ADDRESS` is
-optional until Microsoft has been added to the existing market. Quotes and resolver results only become
-executable/actionable after this registration succeeds.
+Historical deployment addresses remain in `deployments/base-sepolia.json`.
+They must not be configured as current assets or shown as real ownership.
