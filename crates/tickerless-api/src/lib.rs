@@ -13,8 +13,8 @@ pub mod xstocks;
 use actix_web::{HttpRequest, HttpResponse, Responder, error, error::JsonPayloadError, web};
 use catalog::CompanyCatalog;
 use models::{
-    ApiError, AuthResponse, CreateDiscoveryRequest, DiscoveryHistoryQuery, EmailCredentials,
-    GoogleCredential, HealthResponse, LensRequest, LinkRequest, OwnershipQuote,
+    ApiError, AuthResponse, BindWalletRequest, CreateDiscoveryRequest, DiscoveryHistoryQuery,
+    EmailCredentials, GoogleCredential, HealthResponse, LensRequest, LinkRequest, OwnershipQuote,
     OwnershipQuoteQuery, SearchRequest, SubmitTransactionRequest, WorldQuery,
 };
 use sqlx::PgPool;
@@ -210,6 +210,63 @@ async fn current_user(state: web::Data<AppState>, request: HttpRequest) -> impl 
                 "database_error",
                 "could not authenticate session",
             ))
+        }
+    }
+}
+
+async fn bind_wallet(
+    state: web::Data<AppState>,
+    request: HttpRequest,
+    body: web::Json<BindWalletRequest>,
+) -> impl Responder {
+    let Some(token) = request_token(&request) else {
+        return HttpResponse::Unauthorized().json(ApiError::new(
+            "unauthorized",
+            "a valid bearer token is required",
+        ));
+    };
+    let user =
+        match database::authenticated_user(&state.pool, &auth::hash_session_token(token)).await {
+            Ok(Some(user)) => user,
+            Ok(None) => {
+                return HttpResponse::Unauthorized().json(ApiError::new(
+                    "unauthorized",
+                    "session is invalid or expired",
+                ));
+            }
+            Err(error) => {
+                tracing::error!(%error, "failed to authenticate wallet binding");
+                return HttpResponse::InternalServerError().json(ApiError::new(
+                    "database_error",
+                    "could not authenticate session",
+                ));
+            }
+        };
+    let wallet_address = body.wallet_address.trim();
+    if !valid_wallet(wallet_address) {
+        return HttpResponse::BadRequest().json(ApiError::new(
+            "invalid_wallet",
+            "wallet_address must be a valid Solana public key",
+        ));
+    }
+    match database::bind_wallet(&state.pool, user.id, wallet_address).await {
+        Ok(user) => HttpResponse::Ok().json(user),
+        Err(database::BindWalletError::AddressInUse) => {
+            HttpResponse::Conflict().json(ApiError::new(
+                "wallet_in_use",
+                "wallet is already linked to another account",
+            ))
+        }
+        Err(database::BindWalletError::WalletMismatch) => {
+            HttpResponse::Conflict().json(ApiError::new(
+                "wallet_mismatch",
+                "account is already linked to a different wallet",
+            ))
+        }
+        Err(database::BindWalletError::Database(error)) => {
+            tracing::error!(%error, "failed to bind wallet");
+            HttpResponse::InternalServerError()
+                .json(ApiError::new("database_error", "could not link wallet"))
         }
     }
 }
@@ -543,6 +600,7 @@ pub fn configure_app(config: &mut web::ServiceConfig) {
                 .route("/auth/email/login", web::post().to(login_email))
                 .route("/auth/google", web::post().to(login_google))
                 .route("/auth/me", web::get().to(current_user))
+                .route("/auth/wallet", web::post().to(bind_wallet))
                 .route("/auth/logout", web::post().to(logout))
                 .route("/resolve/search", web::post().to(resolve_search))
                 .route("/resolve/link", web::post().to(resolve_link))
@@ -629,6 +687,26 @@ mod tests {
         assert_eq!(response.status(), StatusCode::SERVICE_UNAVAILABLE);
         let body: serde_json::Value = test::read_body_json(response).await;
         assert_eq!(body["code"], "google_auth_unconfigured");
+    }
+
+    #[actix_web::test]
+    async fn wallet_binding_requires_authentication() {
+        let app = test::init_service(
+            App::new()
+                .app_data(web::Data::new(test_state()))
+                .configure(configure_app),
+        )
+        .await;
+        let request = test::TestRequest::post()
+            .uri("/v1/auth/wallet")
+            .set_json(serde_json::json!({
+                "wallet_address": "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp"
+            }))
+            .to_request();
+        assert_eq!(
+            test::call_service(&app, request).await.status(),
+            StatusCode::UNAUTHORIZED
+        );
     }
 
     #[actix_web::test]

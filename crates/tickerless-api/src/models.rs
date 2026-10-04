@@ -17,6 +17,12 @@ pub struct GoogleCredential {
     pub id_token: String,
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BindWalletRequest {
+    pub wallet_address: String,
+}
+
 #[derive(Serialize)]
 pub struct AuthResponse {
     pub access_token: String,

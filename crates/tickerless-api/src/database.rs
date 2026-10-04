@@ -170,6 +170,41 @@ pub async fn authenticated_user(
     Ok(user)
 }
 
+#[derive(Debug)]
+pub enum BindWalletError {
+    AddressInUse,
+    WalletMismatch,
+    Database(sqlx::Error),
+}
+
+pub async fn bind_wallet(
+    pool: &PgPool,
+    user_id: uuid::Uuid,
+    wallet_address: &str,
+) -> Result<AuthUser, BindWalletError> {
+    sqlx::query_as::<_, AuthUser>(
+        "UPDATE users SET wallet_address = $2 WHERE id = $1 \
+         AND (wallet_address IS NULL OR wallet_address = $2) \
+         RETURNING id, email, wallet_address",
+    )
+    .bind(user_id)
+    .bind(wallet_address)
+    .fetch_optional(pool)
+    .await
+    .map_err(|error| {
+        if error
+            .as_database_error()
+            .and_then(|value| value.constraint())
+            == Some("users_wallet_address_key")
+        {
+            BindWalletError::AddressInUse
+        } else {
+            BindWalletError::Database(error)
+        }
+    })?
+    .ok_or(BindWalletError::WalletMismatch)
+}
+
 pub async fn revoke_session(pool: &PgPool, token_hash: &[u8]) -> Result<bool, sqlx::Error> {
     Ok(sqlx::query(
         "UPDATE auth_sessions SET revoked_at = now() WHERE token_hash = $1 \
@@ -509,9 +544,9 @@ mod tests {
     use uuid::Uuid;
 
     use super::{
-        MIGRATOR, authenticated_user, create_discovery, create_session, discovery_history,
-        email_user_credentials, google_user, load_catalog, record_transaction, register_email_user,
-        revoke_session, world,
+        MIGRATOR, authenticated_user, bind_wallet, create_discovery, create_session,
+        discovery_history, email_user_credentials, google_user, load_catalog, record_transaction,
+        register_email_user, revoke_session, world,
     };
     use crate::{
         chain::VerifiedPurchase,
@@ -604,6 +639,20 @@ mod tests {
             .expect("user should register");
         assert_eq!(user.email, "owner@example.com");
         assert!(user.wallet_address.is_none());
+
+        let wallet = "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp";
+        let linked = bind_wallet(&pool, user.id, wallet)
+            .await
+            .expect("wallet should bind");
+        assert_eq!(linked.wallet_address.as_deref(), Some(wallet));
+        assert_eq!(
+            bind_wallet(&pool, user.id, wallet)
+                .await
+                .expect("same wallet should be idempotent")
+                .wallet_address
+                .as_deref(),
+            Some(wallet)
+        );
 
         let (_, stored_hash) = email_user_credentials(&pool, "OWNER@example.com")
             .await
