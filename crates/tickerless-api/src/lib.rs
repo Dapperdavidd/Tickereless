@@ -566,7 +566,9 @@ mod tests {
         let pool = PgPoolOptions::new()
             .connect_lazy("postgres://tickerless:tickerless@127.0.0.1/tickerless")
             .expect("test database URL must be valid");
-        AppState::new(crate::catalog::CompanyCatalog::seeded(), pool)
+        let mut state = AppState::new(crate::catalog::CompanyCatalog::seeded(), pool);
+        state.xstocks = crate::xstocks::XStocksClient::new("http://127.0.0.1:1");
+        state
     }
 
     #[actix_web::test]
@@ -593,7 +595,7 @@ mod tests {
         assert_eq!(response.status(), StatusCode::OK);
         let body: serde_json::Value = test::read_body_json(response).await;
         assert_eq!(body["matches"][0]["company"]["slug"], "meta");
-        assert_eq!(body["matches"][0]["asset"]["symbol"], "tMETAc");
+        assert_eq!(body["matches"][0]["asset"]["symbol"], "METAx");
     }
 
     #[actix_web::test]
@@ -680,7 +682,7 @@ mod tests {
         let response = test::call_service(&app, request).await;
         assert_eq!(response.status(), 200);
         let body: serde_json::Value = test::read_body_json(response).await;
-        assert_eq!(body["estimated_token_amount"], "0.05");
+        assert_eq!(body["estimated_token_amount"], "0.03864568");
         assert_eq!(body["executable"], false);
     }
 

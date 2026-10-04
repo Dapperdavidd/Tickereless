@@ -81,10 +81,14 @@ fn score<'a>(company: &'a Company, query: &str) -> Option<SearchMatch<'a>> {
         reason,
         confidence,
         actionable: company.asset.as_ref().is_some_and(|asset| {
-            asset.contract_address.is_some()
+            let has_verified_solana_deployment = asset.network == "Solana"
+                && asset.contract_address.is_some()
+                && asset.payment_token_address.is_some();
+            let has_complete_evm_deployment = asset.contract_address.is_some()
                 && asset.market_address.is_some()
                 && asset.payment_token_address.is_some()
-                && asset.chain_id.is_some()
+                && asset.chain_id.is_some();
+            has_verified_solana_deployment || has_complete_evm_deployment
         }),
         role: None,
     })
@@ -121,23 +125,47 @@ fn phrase(haystack: &str, needle: &str) -> bool {
 }
 
 fn asset(symbol: &str) -> Option<TokenizedAsset> {
+    let (mint, price_usdc) = match symbol {
+        "AAPLx" => (
+            "XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp",
+            rust_decimal::Decimal::new(331_460, 3),
+        ),
+        "NVDAx" => (
+            "Xsc9qvGR1efVDFGLrVsmkzv3qi45LTBjeUKSPmx9qEh",
+            rust_decimal::Decimal::new(232_885, 3),
+        ),
+        "METAx" => (
+            "Xsa62P5mvPszXL1krVUnU5ar38bBSVcWAB6fmPCo5Zu",
+            rust_decimal::Decimal::new(730_375, 3),
+        ),
+        "GOOGLx" => (
+            "XsCPL9dNWBMvFtTmwcCA5v3xWPSMEBCszbQdiLLq6aN",
+            rust_decimal::Decimal::new(341_115, 3),
+        ),
+        "MSFTx" => (
+            "XspzcW1PRtgf6Wj92HCiZdjzKCyFekVD8P5Ueh3dRMX",
+            rust_decimal::Decimal::new(516_890, 3),
+        ),
+        "AMZNx" => (
+            "Xs3eBt7uRfJX8QUs4suhyU8p2M6DoUDrJyWBa8LLZsg",
+            rust_decimal::Decimal::new(249_751, 3),
+        ),
+        "TSLAx" => (
+            "XsDoVfqeBukxuZHWhdvWHBhgEHjGNst4MLodqsJHzoB",
+            rust_decimal::Decimal::new(357_780, 3),
+        ),
+        _ => return None,
+    };
     Some(TokenizedAsset {
         symbol: symbol.to_owned(),
-        network: "Base Sepolia".to_owned(),
-        environment: "demo".to_owned(),
-        contract_address: None,
+        network: "Solana".to_owned(),
+        environment: "mainnet".to_owned(),
+        contract_address: Some(mint.to_owned()),
         market_address: None,
-        payment_token_address: None,
+        payment_token_address: Some("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v".to_owned()),
         chain_id: None,
-        explorer_url: None,
-        price_usdc: match symbol {
-            "tAAPLc" => rust_decimal::Decimal::new(200, 0),
-            "tNVDAc" => rust_decimal::Decimal::new(180, 0),
-            "tMETAc" => rust_decimal::Decimal::new(500, 0),
-            "tGOOGLc" => rust_decimal::Decimal::new(150, 0),
-            "tMSFTc" => rust_decimal::Decimal::new(4302, 1),
-            _ => rust_decimal::Decimal::ZERO,
-        },
+        explorer_url: Some(format!("https://explorer.solana.com/address/{mint}")),
+        price_usdc,
     })
 }
 
@@ -176,7 +204,7 @@ fn seed_companies() -> Vec<Company> {
                 .into_iter()
                 .map(str::to_owned)
                 .collect(),
-            asset: asset("tAAPLc"),
+            asset: asset("AAPLx"),
         },
         Company {
             slug: "meta".to_owned(),
@@ -206,7 +234,7 @@ fn seed_companies() -> Vec<Company> {
                 .into_iter()
                 .map(str::to_owned)
                 .collect(),
-            asset: asset("tMETAc"),
+            asset: asset("METAx"),
         },
         Company {
             slug: "alphabet".to_owned(),
@@ -245,7 +273,7 @@ fn seed_companies() -> Vec<Company> {
             .into_iter()
             .map(str::to_owned)
             .collect(),
-            asset: asset("tGOOGLc"),
+            asset: asset("GOOGLx"),
         },
         Company {
             slug: "nvidia".to_owned(),
@@ -276,7 +304,7 @@ fn seed_companies() -> Vec<Company> {
                 .into_iter()
                 .map(str::to_owned)
                 .collect(),
-            asset: asset("tNVDAc"),
+            asset: asset("NVDAx"),
         },
         Company {
             slug: "microsoft".to_owned(),
@@ -303,7 +331,44 @@ fn seed_companies() -> Vec<Company> {
                 .into_iter()
                 .map(str::to_owned)
                 .collect(),
-            asset: asset("tMSFTc"),
+            asset: asset("MSFTx"),
+        },
+        Company {
+            slug: "amazon".to_owned(),
+            name: "Amazon".to_owned(),
+            ticker: "AMZN".to_owned(),
+            description: "Commerce and cloud-computing company behind Amazon and AWS.".to_owned(),
+            aliases: ["Amazon", "AWS", "Prime", "Alexa", "Kindle", "Audible"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+            themes: ["ecommerce", "cloud computing"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+            asset: asset("AMZNx"),
+        },
+        Company {
+            slug: "tesla".to_owned(),
+            name: "Tesla".to_owned(),
+            ticker: "TSLA".to_owned(),
+            description: "Electric vehicle, energy storage, and charging company.".to_owned(),
+            aliases: [
+                "Tesla",
+                "Model 3",
+                "Model Y",
+                "Cybertruck",
+                "Supercharger",
+                "Powerwall",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+            themes: ["electric vehicles", "energy storage"]
+                .into_iter()
+                .map(str::to_owned)
+                .collect(),
+            asset: asset("TSLAx"),
         },
     ]
 }
