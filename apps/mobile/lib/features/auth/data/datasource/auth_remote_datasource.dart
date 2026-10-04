@@ -7,6 +7,7 @@ abstract interface class AuthRemoteDataSource {
   Future<AuthSessionModel> emailRegister(String email, String password);
   Future<AuthSessionModel> googleLogin(String idToken);
   Future<AuthSessionModel> restoreSession(String accessToken);
+  Future<void> bindWallet(String accessToken, String walletAddress);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -39,6 +40,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       fallbackError: 'Could not restore your session',
     );
     return AuthSessionModel.fromUser(user, accessToken);
+  }
+
+  @override
+  Future<void> bindWallet(String accessToken, String walletAddress) async {
+    await _client.postJson(
+      '/v1/auth/wallet',
+      {'wallet_address': walletAddress},
+      bearerToken: accessToken,
+      fallbackError: 'Could not link your wallet',
+    );
   }
 
   Future<AuthSessionModel> _emailAuth(

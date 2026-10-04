@@ -56,6 +56,17 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
+  Future<void> bindWallet(AuthSession session, String walletAddress) async {
+    try {
+      await _remoteDataSource.bindWallet(session.accessToken, walletAddress);
+    } on ApiException catch (error) {
+      throw AuthFailure(error.message);
+    } catch (error) {
+      throw AuthFailure(friendlyNetworkError(error));
+    }
+  }
+
+  @override
   Future<void> signOut() async {
     try {
       await _localDataSource.clearToken();

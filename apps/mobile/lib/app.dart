@@ -34,6 +34,7 @@ class _TickerlessAppState extends State<TickerlessApp> {
     signInWithGoogle: widget.dependencies.signInWithGoogle,
     signOut: widget.dependencies.signOut,
     ensureWallet: widget.dependencies.ensureWallet,
+    bindWallet: widget.dependencies.bindWallet,
     restoreSession: widget.dependencies.restoreSession,
   );
 

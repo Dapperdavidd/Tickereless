@@ -4,6 +4,7 @@ import 'package:tickerless/features/auth/data/datasource/auth_remote_datasource.
 import 'package:tickerless/features/auth/data/datasource/google_sign_in_datasource.dart';
 import 'package:tickerless/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
+import 'package:tickerless/features/auth/domain/usecases/bind_wallet.dart';
 import 'package:tickerless/features/auth/domain/usecases/register_with_email.dart';
 import 'package:tickerless/features/auth/domain/usecases/restore_session.dart';
 import 'package:tickerless/features/auth/domain/usecases/sign_in_with_email.dart';
@@ -98,6 +99,7 @@ class AppDependencies {
        restoreSession = RestoreSessionUseCase(repository: authRepository),
        signInWithGoogle = SignInWithGoogleUseCase(repository: authRepository),
        signOut = SignOutUseCase(repository: authRepository),
+       bindWallet = BindWalletUseCase(repository: authRepository),
        ensureWallet = EnsureWalletUseCase(repository: walletRepository),
        revealPrivateKey = RevealPrivateKeyUseCase(repository: walletRepository),
        searchCompanies = SearchCompaniesUseCase(
@@ -119,6 +121,7 @@ class AppDependencies {
   final RestoreSessionUseCase restoreSession;
   final SignInWithGoogleUseCase signInWithGoogle;
   final SignOutUseCase signOut;
+  final BindWalletUseCase bindWallet;
 
   final EnsureWalletUseCase ensureWallet;
   final RevealPrivateKeyUseCase revealPrivateKey;

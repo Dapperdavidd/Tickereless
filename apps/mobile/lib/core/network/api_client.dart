@@ -19,12 +19,16 @@ class ApiClient {
   Future<Map<String, dynamic>> postJson(
     String path,
     Map<String, Object?> body, {
+    String? bearerToken,
     required String fallbackError,
   }) async {
     final response = await _client
         .post(
           Uri.parse('$_baseUrl$path'),
-          headers: const {'content-type': 'application/json'},
+          headers: {
+            'content-type': 'application/json',
+            if (bearerToken != null) 'authorization': 'Bearer $bearerToken',
+          },
           body: jsonEncode(body),
         )
         .timeout(ApiConfig.requestTimeout);

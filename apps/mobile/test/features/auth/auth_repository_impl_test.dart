@@ -124,6 +124,29 @@ void main() {
     expect(tokens.token, isNull);
   });
 
+  test('wallet binding sends the exact Solana address with auth', () async {
+    const session = AuthSession(
+      accessToken: 'tickerless-session',
+      userId: '00000000-0000-0000-0000-000000000001',
+      email: 'owner@example.com',
+    );
+    const wallet = 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp';
+    final repository = repositoryWith(
+      MockClient((request) async {
+        expect(request.url.path, '/v1/auth/wallet');
+        expect(request.headers['authorization'], 'Bearer tickerless-session');
+        expect(jsonDecode(request.body), {'wallet_address': wallet});
+        return http.Response(
+          '{"id":"00000000-0000-0000-0000-000000000001",'
+          '"email":"owner@example.com","wallet_address":"$wallet"}',
+          200,
+        );
+      }),
+    );
+
+    await repository.bindWallet(session, wallet);
+  });
+
   test('a cached token restores the account without another sign-in', () async {
     final repository = repositoryWith(
       MockClient((request) async {

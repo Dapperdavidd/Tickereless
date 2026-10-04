@@ -90,6 +90,9 @@ class FakeAuthRepository implements AuthRepository {
   Future<AuthSession?> restoreSession() async => null;
 
   @override
+  Future<void> bindWallet(AuthSession session, String walletAddress) async {}
+
+  @override
   Future<void> signOut() async {}
 }
 

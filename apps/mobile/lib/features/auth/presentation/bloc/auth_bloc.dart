@@ -2,6 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:tickerless/core/error/failures.dart';
 import 'package:tickerless/features/auth/domain/entities/access_mode.dart';
 import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
+import 'package:tickerless/features/auth/domain/usecases/bind_wallet.dart';
 import 'package:tickerless/features/auth/domain/usecases/register_with_email.dart';
 import 'package:tickerless/features/auth/domain/usecases/restore_session.dart';
 import 'package:tickerless/features/auth/domain/usecases/sign_in_with_email.dart';
@@ -18,12 +19,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required SignInWithGoogleUseCase signInWithGoogle,
     required SignOutUseCase signOut,
     required EnsureWalletUseCase ensureWallet,
+    required BindWalletUseCase bindWallet,
     required RestoreSessionUseCase restoreSession,
   }) : _signInWithEmail = signInWithEmail,
        _registerWithEmail = registerWithEmail,
        _signInWithGoogle = signInWithGoogle,
        _signOut = signOut,
        _ensureWallet = ensureWallet,
+       _bindWallet = bindWallet,
        _restoreSession = restoreSession,
        super(const AuthState(status: AuthStatus.restoring)) {
     on<AuthRestoreRequested>(_onRestoreRequested);
@@ -40,6 +43,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SignInWithGoogleUseCase _signInWithGoogle;
   final SignOutUseCase _signOut;
   final EnsureWalletUseCase _ensureWallet;
+  final BindWalletUseCase _bindWallet;
   final RestoreSessionUseCase _restoreSession;
 
   Future<void> _onRestoreRequested(
@@ -57,6 +61,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         return;
       }
       final wallet = await _ensureWallet(session.userId);
+      try {
+        await _bindWallet(session, wallet.address);
+      } on Failure {
+        // A returning user can still open the app offline. Trading remains
+        // unavailable until the backend confirms this wallet binding.
+      }
       await minimumBrandFrame;
       emit(
         AuthState(
@@ -119,6 +129,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     try {
       final session = await exchange();
       final wallet = await _ensureWallet(session.userId);
+      await _bindWallet(session, wallet.address);
       emit(
         AuthState(
           mode: AccessMode.authenticated,

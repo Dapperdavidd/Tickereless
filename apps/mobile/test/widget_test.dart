@@ -313,6 +313,9 @@ class _DelayedRestoreAuthRepository implements AuthRepository {
   Future<AuthSession?> restoreSession() => _restore.future;
 
   @override
+  Future<void> bindWallet(AuthSession session, String walletAddress) async {}
+
+  @override
   Future<AuthSession> registerWithEmail(String email, String password) async =>
       FakeAuthRepository.session;
 
