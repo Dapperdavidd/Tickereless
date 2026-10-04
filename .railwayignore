@@ -1,0 +1,13 @@
+.git/
+.dart_tool/
+.env
+.env.*
+.zed/
+.workspace-notes/
+outputs/
+target/
+apps/mobile/.dart_tool/
+apps/mobile/build/
+contracts/cache/
+contracts/out/
+broadcast/
