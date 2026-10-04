@@ -238,17 +238,15 @@ async fn logout(state: web::Data<AppState>, request: HttpRequest) -> impl Respon
 pub struct AppState {
     catalog: CompanyCatalog,
     pool: PgPool,
-    chain: chain::ChainClient,
     xstocks: xstocks::XStocksClient,
     google: Option<google::GoogleVerifier>,
 }
 
 impl AppState {
-    pub fn new(catalog: CompanyCatalog, pool: PgPool, chain: chain::ChainClient) -> Self {
+    pub fn new(catalog: CompanyCatalog, pool: PgPool) -> Self {
         Self {
             catalog,
             pool,
-            chain,
             xstocks: xstocks::XStocksClient::production(),
             google: None,
         }
@@ -473,93 +471,16 @@ async fn submit_transaction(
             "company does not exist in the registry",
         ));
     };
-    let Some(asset) = company.asset.as_ref() else {
+    if company.asset.is_none() {
         return HttpResponse::Conflict().json(ApiError::new(
             "asset_unavailable",
             "company does not have a supported tokenized asset",
         ));
-    };
-    if asset.network == "Solana" {
-        return HttpResponse::ServiceUnavailable().json(ApiError::new(
-            "execution_unavailable",
-            "Solana transaction verification is not enabled yet",
-        ));
     }
-    let (Some(market), Some(contract), Some(chain_id)) = (
-        asset.market_address.as_deref(),
-        asset.contract_address.as_deref(),
-        asset.chain_id,
-    ) else {
-        return HttpResponse::Conflict().json(ApiError::new(
-            "asset_not_deployed",
-            "asset deployment is not registered",
-        ));
-    };
-    let purchase = match state
-        .chain
-        .verify_purchase(
-            &input.tx_hash,
-            &input.wallet_address,
-            market,
-            contract,
-            chain_id,
-        )
-        .await
-    {
-        Ok(purchase) => purchase,
-        Err(chain::VerifyError::InvalidTransactionHash) => {
-            return HttpResponse::BadRequest().json(ApiError::new(
-                "invalid_transaction_hash",
-                "tx_hash must be a 32-byte hexadecimal hash",
-            ));
-        }
-        Err(chain::VerifyError::Pending) => {
-            return HttpResponse::Accepted().json(ApiError::new(
-                "transaction_pending",
-                "transaction is not confirmed yet",
-            ));
-        }
-        Err(chain::VerifyError::Reverted) => {
-            return HttpResponse::UnprocessableEntity().json(ApiError::new(
-                "transaction_reverted",
-                "transaction reverted onchain",
-            ));
-        }
-        Err(chain::VerifyError::Mismatch) => {
-            return HttpResponse::UnprocessableEntity().json(ApiError::new(
-                "transaction_mismatch",
-                "transaction does not match this ownership action",
-            ));
-        }
-        Err(chain::VerifyError::Rpc) => {
-            return HttpResponse::BadGateway().json(ApiError::new(
-                "rpc_error",
-                "could not verify the transaction",
-            ));
-        }
-    };
-    match database::record_transaction(&state.pool, &input, &purchase).await {
-        Ok(transaction) => HttpResponse::Created().json(transaction),
-        Err(database::RecordTransactionError::DiscoveryMismatch) => {
-            HttpResponse::Conflict().json(ApiError::new(
-                "discovery_mismatch",
-                "discovery does not belong to this wallet and company",
-            ))
-        }
-        Err(database::RecordTransactionError::Duplicate) => {
-            HttpResponse::Conflict().json(ApiError::new(
-                "transaction_exists",
-                "transaction has already been recorded",
-            ))
-        }
-        Err(database::RecordTransactionError::Database(error)) => {
-            tracing::error!(%error, "failed to record transaction");
-            HttpResponse::InternalServerError().json(ApiError::new(
-                "database_error",
-                "could not record transaction",
-            ))
-        }
-    }
+    HttpResponse::ServiceUnavailable().json(ApiError::new(
+        "execution_unavailable",
+        "Solana transaction verification is not enabled yet",
+    ))
 }
 
 async fn get_world(state: web::Data<AppState>, query: web::Query<WorldQuery>) -> impl Responder {
@@ -645,11 +566,7 @@ mod tests {
         let pool = PgPoolOptions::new()
             .connect_lazy("postgres://tickerless:tickerless@127.0.0.1/tickerless")
             .expect("test database URL must be valid");
-        AppState::new(
-            crate::catalog::CompanyCatalog::seeded(),
-            pool,
-            crate::chain::ChainClient::new("http://127.0.0.1:8545").expect("valid test RPC URL"),
-        )
+        AppState::new(crate::catalog::CompanyCatalog::seeded(), pool)
     }
 
     #[actix_web::test]
