@@ -173,6 +173,12 @@ when it is unavailable. A verified mint may be returned as `actionable`, but
 quotes remain `executable: false` until the API has a supported swap route,
 transaction builder, and confirmation verifier.
 
+Mainnet execution will use Jupiter Swap V2. Create a server-side API key at
+`https://portal.jup.ag` and set `JUPITER_API_KEY`; never place this key in the
+Flutter app. The backend will request the order, the user's local wallet will
+sign the returned transaction, and the backend will verify the confirmed swap
+before recording ownership.
+
 The transaction endpoint is intentionally closed during the migration:
 
 ```shell
