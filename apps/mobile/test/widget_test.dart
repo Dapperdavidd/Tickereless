@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:tickerless/app.dart';
-import 'package:tickerless/core/error/failures.dart';
 import 'package:tickerless/features/auth/domain/entities/auth_session.dart';
 import 'package:tickerless/features/auth/domain/repositories/auth_repository.dart';
 import 'package:tickerless/features/wallet/data/chain_gateway.dart';
@@ -171,7 +170,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('owner@example.com'), findsOneWidget);
-    expect(find.text('0x0000…00ff'), findsWidgets);
+    expect(find.text('XsbEhL…JzJp'), findsWidgets);
   });
 
   testWidgets('wallet balance text toggles privacy and Receive fits', (
@@ -197,7 +196,7 @@ void main() {
 
     await tester.tap(find.text('Receive'));
     await tester.pumpAndSettle();
-    expect(find.text('Receive on Base Sepolia'), findsOneWidget);
+    expect(find.text('Receive on Solana Devnet'), findsOneWidget);
     expect(find.text('Copy address'), findsOneWidget);
     expect(
       find.descendant(
@@ -208,7 +207,7 @@ void main() {
     );
   });
 
-  testWidgets('search journey reaches a Base Sepolia ownership confirmation', (
+  testWidgets('search reaches a verified Solana instrument passport', (
     tester,
   ) async {
     await signIn(tester);
@@ -223,124 +222,40 @@ void main() {
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();
     // The passport leads with the price and the chart, not a page title.
-    expect(find.text(r'$500.00'), findsOneWidget);
+    expect(find.text(r'$730.38'), findsOneWidget);
     expect(find.text('Demo series · not market data'), findsOneWidget);
-
-    final ownButton = find.text('Own Meta Platforms');
-    await tester.ensureVisible(ownButton);
-    await tester.tap(ownButton);
-    await tester.pumpAndSettle();
-    expect(find.text('Base Sepolia'), findsOneWidget);
-
-    final reviewButton = find.text('Buy with USDC');
-    await tester.ensureVisible(reviewButton);
-    await tester.tap(reviewButton);
-    await tester.pumpAndSettle();
-    expect(find.text('You now own\nMeta Platforms.'), findsOneWidget);
-    expect(find.text('on Base Sepolia'), findsOneWidget);
-  });
-
-  testWidgets('purchase failures use a friendly actionable snackbar', (
-    tester,
-  ) async {
-    await signIn(
-      tester,
-      chainGateway: FakeChainGateway(
-        purchaseFailure: const WalletFailure(
-          'You need Base Sepolia ETH to pay the network fee. Add test ETH to your wallet and try again.',
-          kind: WalletFailureKind.needsNetworkFee,
-        ),
-      ),
-    );
-
-    await tester.tap(find.byTooltip('Search'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'META');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('View Company →'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Own Meta Platforms'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Buy with USDC'));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.text(
-        'You need Base Sepolia ETH to pay the network fee. Add test ETH to your wallet and try again.',
-      ),
-      findsOneWidget,
-    );
-    expect(find.text('Open wallet'), findsOneWidget);
-    expect(find.textContaining('RPCError'), findsNothing);
-    expect(find.textContaining('-32000'), findsNothing);
+    expect(find.text('Solana mainnet'), findsOneWidget);
+    expect(find.text('Tokenized stock'), findsOneWidget);
+    expect(find.text('Solana access coming soon'), findsOneWidget);
   });
 
   for (final asset in const [
-    (query: 'AAPL', company: 'Apple'),
-    (query: 'NVDA', company: 'NVIDIA'),
-    (query: 'META', company: 'Meta Platforms'),
-    (query: 'GOOGL', company: 'Alphabet'),
+    (query: 'AAPL', company: 'Apple', symbol: 'AAPLx'),
+    (query: 'NVDA', company: 'NVIDIA', symbol: 'NVDAx'),
+    (query: 'META', company: 'Meta Platforms', symbol: 'METAx'),
+    (query: 'GOOGL', company: 'Alphabet', symbol: 'GOOGLx'),
+    (query: 'MSFT', company: 'Microsoft', symbol: 'MSFTx'),
   ]) {
-    testWidgets('${asset.query} completes the full supported purchase flow', (
-      tester,
-    ) async {
-      await signIn(tester);
+    testWidgets(
+      '${asset.query} exposes its verified instrument without a fake trade',
+      (tester) async {
+        await signIn(tester);
 
-      await tester.tap(find.byTooltip('Search'));
-      await tester.pumpAndSettle();
-      await tester.enterText(find.byType(TextField), asset.query);
-      await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pumpAndSettle();
-      expect(find.text(asset.company), findsOneWidget);
+        await tester.tap(find.byTooltip('Search'));
+        await tester.pumpAndSettle();
+        await tester.enterText(find.byType(TextField), asset.query);
+        await tester.testTextInput.receiveAction(TextInputAction.search);
+        await tester.pumpAndSettle();
+        expect(find.text(asset.company), findsOneWidget);
 
-      await tester.tap(find.text('View Company →'));
-      await tester.pumpAndSettle();
-      final ownButton = find.text('Own ${asset.company}');
-      await tester.ensureVisible(ownButton);
-      await tester.tap(ownButton);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Buy with USDC'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('You now own\n${asset.company}.'), findsOneWidget);
-      expect(find.text('on Base Sepolia'), findsOneWidget);
-    });
+        await tester.tap(find.text('View Company →'));
+        await tester.pumpAndSettle();
+        expect(find.text(asset.symbol), findsOneWidget);
+        expect(find.text('Solana access coming soon'), findsOneWidget);
+        expect(find.text('Buy with USDC'), findsNothing);
+      },
+    );
   }
-
-  testWidgets('a purchase lands in Wallet transaction history', (tester) async {
-    await signIn(tester);
-
-    await tester.tap(find.byTooltip('Search'));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byType(TextField), 'company behind Instagram');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('View Company →'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Own Meta Platforms'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Buy with USDC'));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text('View in Wallet'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Wallet'), findsWidgets);
-    expect(find.text(r'$15.00'), findsWidgets);
-    await tester.scrollUntilVisible(
-      find.text('Recent Transactions'),
-      240,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.text('Recent Transactions'), findsOneWidget);
-    await tester.scrollUntilVisible(
-      find.text('Bought tMETAc'),
-      160,
-      scrollable: find.byType(Scrollable).last,
-    );
-    expect(find.text('Bought tMETAc'), findsWidgets);
-  });
 
   testWidgets('World is a company news hub', (tester) async {
     await enterAsGuest(tester);
@@ -352,7 +267,7 @@ void main() {
     expect(find.textContaining('official newsroom update'), findsWidgets);
   });
 
-  testWidgets('guest discovery stops at the purchase sign-in gate', (
+  testWidgets('guest discovery stops at the Solana execution gate', (
     tester,
   ) async {
     await enterAsGuest(tester);
@@ -364,10 +279,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('View Company →'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Own Meta Platforms'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Sign in to own a piece'), findsOneWidget);
+    expect(find.text('Solana access coming soon'), findsOneWidget);
+    expect(find.text('Sign in to own a piece'), findsNothing);
     expect(find.text('Review Purchase'), findsNothing);
   });
 

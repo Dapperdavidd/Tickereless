@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:tickerless/core/error/failures.dart';
 
-enum WalletOperation { load, purchase, sale, usdcTransfer, ethTransfer }
+enum WalletOperation { load, purchase, sale, usdcTransfer, solTransfer }
 
 /// Converts provider, JSON-RPC, and transport errors into stable user copy.
 /// Raw node messages are useful in logs, but never belong in the interface.
@@ -29,7 +29,7 @@ WalletFailure presentableWalletFailure(
       text.contains('timeout') ||
       text.contains('timed out')) {
     return const WalletFailure(
-      'The Base Sepolia network is taking too long. Try again shortly.',
+      'The Solana network is taking too long. Try again shortly.',
       kind: WalletFailureKind.network,
     );
   }
@@ -38,7 +38,7 @@ WalletFailure presentableWalletFailure(
       text.contains('insufficient funds for intrinsic transaction cost') ||
       text.contains('sender balance is insufficient')) {
     return const WalletFailure(
-      'You need Base Sepolia ETH to pay the network fee. Add test ETH to your wallet and try again.',
+      'You need enough SOL to pay the network fee.',
       kind: WalletFailureKind.needsNetworkFee,
     );
   }
@@ -53,7 +53,7 @@ WalletFailure presentableWalletFailure(
       text.contains('too many requests') ||
       text.contains('code -32005')) {
     return const WalletFailure(
-      'The Base Sepolia network is busy. Try again in a moment.',
+      'The Solana network is busy. Try again in a moment.',
       kind: WalletFailureKind.network,
     );
   }
@@ -77,17 +77,17 @@ String _balanceMessage(WalletOperation operation) => switch (operation) {
   WalletOperation.purchase || WalletOperation.usdcTransfer =>
     'Your USDC balance is too low for this transaction.',
   WalletOperation.sale => 'Your asset balance is too low for this sale.',
-  WalletOperation.ethTransfer =>
-    'Your Base Sepolia ETH balance is too low for the amount and network fee.',
+  WalletOperation.solTransfer =>
+    'Your SOL balance is too low for the amount and network fee.',
   WalletOperation.load => 'Your wallet balance could not be loaded.',
 };
 
 String _fallbackMessage(WalletOperation operation) => switch (operation) {
   WalletOperation.load =>
-    'Your Base Sepolia balances are unavailable right now. Pull to refresh.',
+    'Your Solana balances are unavailable right now. Pull to refresh.',
   WalletOperation.purchase =>
     'We couldn’t complete this purchase. Try again in a moment.',
   WalletOperation.sale => 'We couldn’t complete this sale. Try again shortly.',
-  WalletOperation.usdcTransfer || WalletOperation.ethTransfer =>
+  WalletOperation.usdcTransfer || WalletOperation.solTransfer =>
     'We couldn’t send this transaction. Try again shortly.',
 };

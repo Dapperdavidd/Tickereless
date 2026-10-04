@@ -242,8 +242,18 @@ class _PassportView extends StatelessWidget {
               child: StatStrip(
                 stats: [
                   (label: 'Token', value: company.symbol),
-                  (label: 'Network', value: 'Base Sepolia'),
-                  (label: 'Asset type', value: 'Test token'),
+                  (
+                    label: 'Network',
+                    value: company.symbol.endsWith('x')
+                        ? 'Solana mainnet'
+                        : 'Discovery only',
+                  ),
+                  (
+                    label: 'Asset type',
+                    value: company.symbol.endsWith('x')
+                        ? 'Tokenized stock'
+                        : 'No verified instrument',
+                  ),
                 ],
               ),
             ),
@@ -724,7 +734,7 @@ class _SellAmountSheetState extends State<_SellAmountSheet> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Two Base Sepolia confirmations are required. Testnet assets have no monetary value.',
+            'Sales become available after a verified Solana execution route is connected.',
             style: TextStyle(color: AppColors.muted, fontSize: 11),
           ),
         ],

@@ -42,10 +42,7 @@ class PurchaseConfirmedScreen extends StatelessWidget {
               '${args.tokens.toStringAsFixed(4)} ${args.company.symbol}',
               style: const TextStyle(fontSize: 18),
             ),
-            const Text(
-              'on Base Sepolia',
-              style: TextStyle(color: AppColors.muted),
-            ),
+            const Text('on Solana', style: TextStyle(color: AppColors.muted)),
             const SizedBox(height: 28),
             HairlineList(
               gap: 28,
@@ -54,8 +51,8 @@ class PurchaseConfirmedScreen extends StatelessWidget {
                 SummaryRow(
                   label: 'Transaction',
                   value: args.transactionHash == null
-                      ? 'Confirmed on Base'
-                      : 'View on BaseScan ↗',
+                      ? 'Confirmed on Solana'
+                      : 'View in Solana Explorer ↗',
                   onTap: args.transactionHash == null
                       ? null
                       : () => launchUrl(

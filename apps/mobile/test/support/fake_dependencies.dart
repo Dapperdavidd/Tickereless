@@ -97,11 +97,11 @@ class FakeWalletRepository implements WalletRepository {
   @override
   Future<WalletIdentity> ensureWallet(String userId) async =>
       const WalletIdentity(
-        address: '0x00000000000000000000000000000000000000ff',
+        address: 'XsbEhLAtcf6HdfpFZ5xEMdqW8nfAvcsP5bdudRLJzJp',
       );
 
   @override
-  Future<String> revealPrivateKey(String userId) async => '0x${'a' * 64}';
+  Future<String> revealPrivateKey(String userId) async => 'test-secret';
 }
 
 class FakeNewsRepository implements NewsRepository {

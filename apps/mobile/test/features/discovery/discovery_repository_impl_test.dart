@@ -23,7 +23,7 @@ void main() {
     ),
   );
 
-  test('search maps the backend company and its Base asset', () async {
+  test('search maps the backend company and its Solana instrument', () async {
     final repository = repositoryWith(
       MockClient((request) async {
         expect(request.url.path, '/v1/resolve/search');
@@ -31,7 +31,7 @@ void main() {
           '{"matches":[{"company":{"slug":"meta","name":"Meta Platforms",'
           '"ticker":"META","description":"Behind Instagram",'
           '"aliases":["Instagram","WhatsApp"],'
-          '"asset":{"symbol":"tMETAc","price_usdc":"500.000000"}},'
+          '"asset":{"symbol":"METAx","price_usdc":"730.375000"}},'
           '"reason":"Instagram is associated with Meta Platforms.",'
           '"confidence":0.95}]}',
           200,
@@ -42,8 +42,8 @@ void main() {
     final matches = await repository.search('company behind Instagram');
 
     expect(matches.single.company.name, 'Meta Platforms');
-    expect(matches.single.company.symbol, 'tMETAc');
-    expect(matches.single.company.price, 500);
+    expect(matches.single.company.symbol, 'METAx');
+    expect(matches.single.company.price, 730.375);
     expect(matches.single.company.products, ['Instagram', 'WhatsApp']);
     expect(matches.single.confidence, .95);
   });

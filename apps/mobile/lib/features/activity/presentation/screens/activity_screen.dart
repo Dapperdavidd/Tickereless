@@ -794,7 +794,9 @@ class _SendSheetState extends State<_SendSheet> {
             const SizedBox(height: 20),
             FilledButton(
               onPressed: _sending ? null : _reviewAndSend,
-              child: Text(_sending ? 'Confirming on Base…' : 'Review and send'),
+              child: Text(
+                _sending ? 'Confirming on Solana…' : 'Review and send',
+              ),
             ),
             const SizedBox(height: 8),
             const Text(

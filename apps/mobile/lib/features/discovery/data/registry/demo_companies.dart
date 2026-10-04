@@ -1,88 +1,87 @@
 import 'package:tickerless/features/discovery/domain/entities/company.dart';
 
-/// The companies the demo ships with — what the Discover grid shows and what
-/// the screens fall back to before the resolver has answered.
+/// Local company fallbacks used while the live resolver is loading.
 ///
-/// Prices and daily changes are fixed demo values, not quotes.
+/// Prices are cached indications only. The API supplies live issuer prices.
 abstract final class DemoCompanies {
   static const apple = Company(
     name: 'Apple',
     ticker: 'AAPL',
-    symbol: 'tAAPLc',
+    symbol: 'AAPLx',
     description: 'The company behind iPhone, Mac, iPad, AirPods and more.',
     products: ['iPhone', 'Mac', 'AirPods'],
-    price: 214.32,
+    price: 331.46,
     change: 1.81,
   );
 
   static const meta = Company(
     name: 'Meta Platforms',
     ticker: 'META',
-    symbol: 'tMETAc',
+    symbol: 'METAx',
     description:
         'The parent company of Instagram, WhatsApp, Facebook and Threads.',
     products: ['Instagram', 'WhatsApp', 'Threads'],
-    price: 500,
+    price: 730.375,
     change: 1.2,
   );
 
   static const nvidia = Company(
     name: 'NVIDIA',
     ticker: 'NVDA',
-    symbol: 'tNVDAc',
+    symbol: 'NVDAx',
     description:
         'The computing company behind GeForce, RTX, CUDA and accelerated AI.',
     products: ['GeForce', 'RTX', 'CUDA'],
-    price: 180,
+    price: 232.885,
     change: 2.4,
   );
 
   static const alphabet = Company(
     name: 'Alphabet',
     ticker: 'GOOGL',
-    symbol: 'tGOOGLc',
+    symbol: 'GOOGLx',
     description:
         'The company behind Google Search, YouTube, Android, Gemini and more.',
     products: ['Google', 'YouTube', 'Gemini'],
-    price: 150,
+    price: 341.115,
     change: 1.09,
   );
 
   static const tesla = Company(
     name: 'Tesla',
     ticker: 'TSLA',
-    symbol: 'tTSLAc',
+    symbol: 'TSLAx',
     description:
         'The company behind Model 3, Model Y, Powerwall and the Supercharger network.',
     products: ['Model Y', 'Powerwall', 'Supercharger'],
-    price: 248.5,
+    price: 357.78,
     change: 2.94,
   );
 
   static const microsoft = Company(
     name: 'Microsoft',
     ticker: 'MSFT',
-    symbol: 'tMSFTc',
+    symbol: 'MSFTx',
     description: 'The company behind Windows, Office, Xbox, Azure and Copilot.',
     products: ['Windows', 'Xbox', 'Azure'],
-    price: 430.2,
+    price: 516.89,
     change: .74,
   );
 
   static const amazon = Company(
     name: 'Amazon',
     ticker: 'AMZN',
-    symbol: 'tAMZNc',
+    symbol: 'AMZNx',
     description: 'The company behind Amazon, Prime, Kindle, Alexa and AWS.',
     products: ['Prime', 'Kindle', 'AWS'],
-    price: 186.4,
+    price: 249.751,
     change: 1.32,
   );
 
   static const spotify = Company(
     name: 'Spotify',
     ticker: 'SPOT',
-    symbol: 'tSPOTc',
+    symbol: 'SPOT',
     description:
         'The company behind Spotify, Wrapped and the podcast catalogue.',
     products: ['Spotify', 'Wrapped', 'Podcasts'],

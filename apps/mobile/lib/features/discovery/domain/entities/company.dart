@@ -18,7 +18,7 @@ class Company extends Equatable {
   final String name;
   final String ticker;
 
-  /// The tokenised demo equity, e.g. `tAAPLc`.
+  /// The verified instrument symbol when available, e.g. `AAPLx`.
   final String symbol;
   final String description;
   final List<String> products;
