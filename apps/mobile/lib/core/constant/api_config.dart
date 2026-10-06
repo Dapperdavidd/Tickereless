@@ -6,7 +6,7 @@
 abstract final class ApiConfig {
   static const baseUrl = String.fromEnvironment(
     'TICKERLESS_API_URL',
-    defaultValue: 'https://api-production-b1d0b.up.railway.app',
+    defaultValue: 'https://tickereless-api.onrender.com',
   );
 
   static const requestTimeout = Duration(seconds: 12);

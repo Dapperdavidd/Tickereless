@@ -31,8 +31,8 @@ flutter pub get
 flutter run
 ```
 
-The app defaults to the deployed Railway API at
-`https://api-production-b1d0b.up.railway.app`. Override the API origin for
+The app defaults to the deployed Render API at
+`https://tickereless-api.onrender.com`. Override the API origin for
 local development without changing source code:
 
 ```shell
